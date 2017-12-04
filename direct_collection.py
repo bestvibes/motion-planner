@@ -12,6 +12,12 @@ def get_point_index(t, qdim, udim):
     ut_index = [vt_index[-1], vt_index[-1]+udim]
     return qt_index, vt_index, ut_index
 
+def get_point_q_v_u(traj, t, qdim, udim):
+    q_index, v_index, u_index = get_point_index(t, qdim, udim)
+    q = traj[q_index[0]:q_index[-1]]
+    v = traj[v_index[0]:v_index[-1]]
+    u = traj[u_index[0]:u_index[-1]]
+    return q, v, u
 
 def block_dymamics(q, v, u):
     return u
@@ -31,8 +37,69 @@ class Point_constraint():
         self.udim = udim
         self.dt = dt
 
-    # def eval_g(traj):
-    #     index =
+
+class Point_Dynamic_Error():
+    def __init__(self, index, problem, dynamics):
+        self.t = index
+        self.prob = problem
+        self.dynamics = dynamics
+
+    def __call__(self, traj):
+        #return a vector, representing the dynamic error at time i
+        #the dimension of the vector is ||2 * qdim|| for q and v
+        q0, v0, u0 = get_point_q_v_u(traj, self.t, prob["qdim"], prob["udim"])
+        q1, v1, u1 = get_point_q_v_u(traj, self.t+1, prob["qdim"], prob["udim"])
+
+        x0 = np.hstack([q0, v0])
+        x1 = np.hstack([q1, v1])
+
+        # the deviavie respect to [q, v], not including u: x_dot = f(x, u)
+        #TODO: each point is evaluted twice; this can be improved
+        d0 = np.hstack([v0, self.dynamics(q0, v0, u0)])
+        d1 = np.hstack([v1, self.dynamics(q1, v1, u1)])
+
+        error = (x1 - x0) - 0.5*self.prob["dt"]*(d0 + d1) #3.2 of Kelly(2017)
+        return error
+
+
+class Point_Dynamic_Error_Jacobian():
+    def __init__(self, index, problem, dynamics_jac):
+        self.t = index
+        self.prob = problem
+        # dynamics_jac evaluats the jacobian of accelation = f(q, v, u)
+        self.dynamics_jac = dynamics_jac
+        #the jacobian of the positon error is determined by postion and  velocity
+        #And it is not influenced by the dynamic_jac, which is associated with acc
+        #This is a constant so can be set before run time
+        self.dim_q_jac_lst = [-1, -0.5*self.prob["dt"], 1, -0.5*self.prob["dt"]]
+        self.q_jac_lst = self.dim_q_jac_lst * self.prob['qdim']
+
+    def __call__(traj):
+        #returns an array with shape (2*qdim, ||traj||)
+        #the jacobian of the positon error is determined by postion and  velocity
+        #And it is not influenced by the dynamic_jac, which is associated with acc
+        # q_jac_lst = [-1, -0.5*self.prob["dt"], 1, -0.5*self.prob["dt"]] * self.qdim
+        # postion derivative
+
+        q0, v0, u0 = get_point_q_v_u(traj, self.t, self.prob["qdim"], self.prob["udim"])
+        q1, v1, u1 = get_point_q_v_u(traj, self.t+1, self.prob["qdim"], self.prob["udim"])
+
+        a0_jac = self.dynamics_jac(q0, v0, u0)
+        a1_jac = self.dynamics_jac(q1, v1, u1)
+
+        dq0 = -0.5*self.prob["dt"]*a0_jac[:,0:self.qdim]
+        dv0 = -1 - 0.5*self.prob["dt"]*a0_jac[:, self.qdim:2*self.qdim]
+        du0 = -0.5*self.prob["dt"]*a0_jac[:, 2*self.qdim:2*self.qdim+self.udim]
+
+        dq1 = -0.5*self.prob["dt"]*a1_jac[:,0:self.qdim]
+        dv1 = 1 - 0.5*self.prob["dt"]*a1_jac[:, self.qdim:2*self.qdim]
+        du1 = -0.5*self.prob["dt"]*a1_jac[:, 2*self.qdim:2*self.qdim+self.udim]
+
+        v_jac = np.concatenate([dq0, dv0, du0, dq1, dv1, du1], axis=1)
+        v_jac_flat = v_jac.flatten()
+
+        point_jac_flat = np.hstack([self.q_jac_lst, v_jac_flat])
+        return point_jac_flat
 
 
 class Dynamic_constraints():
