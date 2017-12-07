@@ -1,10 +1,8 @@
 import numpy as np
 import scipy as sp
 import itertools as it
-import pyipopt as ip
-import itertools as it
 import numdifftools as nd
-import pyipopt as ip
+#this module implements dynamics and the jacobian and hessian of dyanmcis
 
 def get_point_index(t, qdim, udim):
     # qdim, udim = self.qdim, self.udim
@@ -15,14 +13,16 @@ def get_point_index(t, qdim, udim):
     ut_index = [vt_index[-1], vt_index[-1]+udim]
     return qt_index, vt_index, ut_index
 
-
-def get_point_q_v_u(traj, t, qdim, udim):
-    q_index, v_index, u_index = get_point_index(t, qdim, udim)
+def get_q_v_u_from_indexes(traj, q_index, v_index, u_index):
     q = traj[q_index[0]:q_index[-1]]
     v = traj[v_index[0]:v_index[-1]]
     u = traj[u_index[0]:u_index[-1]]
     return q, v, u
 
+
+def get_point_q_v_u(traj, t, qdim, udim):
+    q_index, v_index, u_index = get_point_index(t, qdim, udim)
+    return get_q_v_u_from_indexes(q_index, v_index, u_index)
 
 def block_dymamics(q, v, u):
     return u
@@ -33,7 +33,86 @@ def block_dymamics_jac(q, v, u):
     jac_2d = jac.reshape(1, -1)
     return jac_2d
 
+class Dynamics_constriant():
+    def __init__(self, prob, dynamics, dynamics_jac, t):
+        #the size of the eval_g is 2*qdim, for q_dot and q_dot_dot
+        #the shape of the jacobian is ( 2*qdim,  ||traj|| )
+        self.prob = prob
+        self.dynamics = dynamics
+        self.dynamics_jac = dynamics_jac
+        self.get_indexes(t)
+        # self.get_constant_vel_jac_value()
 
+        #the jacobian of the positon error is determined by postion and  velocity
+        #And it is not influenced by the dynamic_jac, which is associated with acc
+        #This is a constant so can be set before run time
+        # self.dim_q_jac_lst = [-1, -0.5*self.prob["dt"], 1, -0.5*self.prob["dt"]]
+        # self.q_jac_lst = self.dim_q_jac_lst * self.prob['qdim']
+
+    def eval_g(self, traj):
+        q0, v0, u0 = get_q_v_u_from_indexes(self.q0_i, self.v0_i, self.u0_i)
+        q1, v1, u1 = get_q_v_u_from_indexes(self.q1_i, self.v1_i, self.u1_i)
+
+        x0 = np.hstack([q0, v0])
+        x1 = np.hstack([q1, v1])
+
+        d0 = np.hstack([v0, self.dynamics(q0, v0, u0)])
+        d1 = np.hstack([v1, self.dynamics(q1, v1, u1)])
+        #3.2 of Kelly(2017)
+        error = (x1 - x0) - 0.5*self.prob["dt"]*(d0 + d1)
+        return error
+
+    def get_indexes(self, t):
+        self.q0_i, self.v0_i, self.u0_i = get_point_index(t, qdim, udim)
+        self.q1_i, self.v1_i, self.u1_i = get_point_index(t+1, qdim, udim)
+
+
+    def get_constant_vel_jac_value(self):
+        self.dim_q_jac_lst = [-1, -0.5*self.prob["dt"], 1, -0.5*self.prob["dt"]]
+        #repeat this with qdim times, one for each qdim
+        self.q_jac_lst = self.dim_q_jac_lst * self.prob['qdim']
+
+
+    def get_position(self):
+        vel_rows, vel_cols = self.get_vel_jac_positions()
+        acc_rows, acc_cols = self.get_acc_jac_positions()
+
+        rows = np.hstack(vel_rows, acc_rows)
+        cols = np.hstack(vel_cols, acc_cols)
+        return rows, cols
+        # dq_position = self.get_jq_position()
+        # dv_position = self.get_jv_position()
+        # position = dq_position + dv_position
+        # return position
+
+
+    def get_jq_position(self):
+        pdim = 2 * self.prob["qdim"] + self.prob["udim"]
+        qdim = self.prob["qdim"]
+        t = self.t
+        def get_dim_jac_position(t, d):
+            q0_i = pdim*t + d
+            q1_i = pdim*(t+1) + d
+            v0_i = q0_i + qdim
+            v1_i = q1_i + qdim
+            return [q0_i, v0_i, q1_i, v1_i]
+
+        q_position_lst = [get_dim_jac_position(t, d) for d in range(qdim)]
+        return q_position_lst
+
+    def get_jv_position(self):
+        qdim = self.prob["qdim"]
+        udim = self.prob["udim"]
+        t = self.t
+        q0_index, v0_index, u0_index = get_point_index(t, qdim, udim)
+        q1_index, v1_index, u1_index = get_point_index(t+1, qdim, udim)
+        row_v_position = list(range(q0_index[0], u1_index[-1]))#TODO: check end point
+        # v_position = row_v_position*qdim
+        v_position = [row_v_position for d in range(qdim)]
+        return v_position
+
+    def eval_jac_g(self, traj):
+        pass
 
 class Point_Dynamic_Error():
     def __init__(self, problem, dynamics, t):
@@ -146,54 +225,6 @@ class Point_Dynamic_Jacobian():
         return self.value(traj)
 
 
-class Point_Dynamic_Hessian:
-    def __init__(self, problem, dynamic_hessian, t):
-        self.prob = prob
-        self.dynamic_hessian = dynamic_hessian
-        self.t = t
-        self.position = self.get_position()
-
-    def get_position(self):
-        def get_hessian_index(t, qdim, udim):
-            # q_i, v_i, u_i = get_point_index(t, qdim, udim)
-            # q_range = range(q_i[0]:u_i[-1])
-            pdim = 2*qdim + udim
-            q_range = range(t*pdim, (t+1)*pdim)
-            pos_iter = it.product(q_range, q_range)
-            pos_list = list(pos_iter)
-            return pos_list
-
-        t = self.t
-        qdim = self.prob["qdim"]
-        udim = self.prob["udim"]
-        q0_pos_lst = get_hessian_index(t, qdim, udim)
-        q1_pos_lst = get_hessian_index(t, qdim, udim)
-
-        pos_lst = q0_pos_lst + q1_pos_lst
-        return pos_lst
-
-
-    def value(self, traj):
-        t = self.prob["t"]
-        qdim = self.prob["qdim"]
-        udim = self.prob["udim"]
-        q0, v0, u0 = get_point_q_v_u(t, qdim, udim)
-        q1, v1, u1 = get_point_q_v_u(t+1, qdim, udim)
-
-        h0 = self.dynamic_hessian(q0, v0, u0)
-        h1 = self.dynamic_hessian(q1, v1, u1)
-
-        h0_flat = h0.flatten()
-        h1_flat = h1.flatten()
-        return np.hstack([h0_flat, h1_flat])
-
-    def __call__(traj, flag):
-        if flag:
-            return self.position
-        value = self.value(traj)
-        return value
-
-
 def traj_dynamic_error_function_factory(prob, dynamics):
     #number of trajectory point
     n = prob["n"]
@@ -216,120 +247,6 @@ def traj_dynamic_hessian_function_factory(prob, dynamics_hessian):
     func_lst =[Point_Dynamic_Jacobian(prob, dynamics_hessian, t)
                for t in range(n-1)]
 
-
-class Ipopt_Constriants:
-    def __init__(self, g_func_lst):
-        self.g_func_lst = g_func_lst
-
-    def __call__(self, X):
-        error_lst = [g(X) for g in self.g_func_lst]
-        error_arr = np.hstack(error_lst)
-        return error_arr
-
-
-class Ipopt_Constriants_Jacobian:
-    def __init__(self, g_jac_func_lst):
-        self.g_jac_func_lst = g_jac_func_lst
-        self.N = len(self.g_jac_func_lst)
-
-    def __call__(self, X, flag):
-        result_iter = (g_jac(X, flag) for g_jac in self.g_jac_func_lst)
-        if flag:# return positions, not values
-            col_pos_iter = result_iter
-            row_col_iter = it.chain.from_iterable(col_pos_iter)
-            pos_lst = [[(r, c) for c in cs] for (r, cs) in enumerate(row_col_iter)]
-            pos_arr = np.vstack(pos_lst)
-            row_arr = pos_arr[:, 0]
-            col_arr = pos_arr[:, 1]
-            return ( row_arr, col_arr )
-            # return  col_arr, row_arr
-        value_iter = result_iter
-        value_lst = list(value_iter)
-        value_arr = np.hstack(value_lst)
-        return value_arr
-
-
-def eval_f(X):
-    #this is the cost function
-    q_arr, v_arr, u_arr = X.reshape(-1, 3).T
-    square = np.power(u_arr, 2)
-    cost = np.sum(square)
-    return cost
-
-
-class Control_square_cost:
-    def __init__(self, prob):
-        self.prob = prob
-        # self.const_grad = self.get_const_grad()
-
-    def get_const_grad(self):
-        qdim = self.prob["qdim"]
-        udim = self.prob["udim"]
-        n = self.prob['n']
-        grad_q_v =  np.zeros((n, 2*qdim))
-        grad_u = np.ones((n, udim))
-
-        grad_2d = np.concatenate((grad_q_v, grad_u), axis=1)
-        grad = grad_2d.flatten()
-        return grad
-
-
-    def __call__(self, X):
-        qdim = self.prob["qdim"]
-        udim = self.prob["udim"]
-
-        U = X.reshape(self.prob["n"], -1)[:, 2*qdim:]
-
-        n = self.prob['n']
-        grad_q_v =  np.zeros((n, 2*qdim))
-        # # grad_u = np.ones((n, udim)) *
-        #
-        grad_2d = 2*np.concatenate((grad_q_v, U), axis=1)
-        grad = grad_2d.flatten()
-        return grad
-
-
-class Point_q_v_error():
-    def __init__(self, prob, goal, t):
-        self.prob = prob
-        self.goal = goal
-        self.t = t
-
-    def __call__(self, traj):
-        qdim = self.prob["qdim"]
-        udim = self.prob["udim"]
-        q, v, u = get_point_q_v_u(traj, self.t, qdim, udim)
-        q_v = np.hstack([q, v])
-        diff = q_v - self.goal
-        diff_2 = np.power(diff, 2)
-        return diff_2
-
-
-class Point_q_v_jacobian():
-    def __init__(self, prob, goal, t):
-        self.prob = prob
-        self.t = t
-        self.goal = goal
-        self.position = self.get_position()
-
-    def get_position(self):
-        q_i, v_i, u_i = get_point_index(self.t, self.prob["qdim"], self.prob["udim"])
-        # index = [list( range(q_i[0], v_i[-1]) )]
-        index = [[i] for i in range(q_i[0], v_i[-1])]
-        return index
-
-    def value(self, traj):
-        q, v, u = get_point_q_v_u(traj, self.t, self.prob["qdim"], self.prob["udim"])
-
-        q_v = np.hstack([q, v])
-        jac =  2*(q_v - self.goal)
-        return np.hstack([q, v])
-
-    def __call__(self, traj, flag):
-        if flag:
-            return self.position
-        jac = self.value(traj)
-        return jac
 
 
 if __name__=="__main__":
