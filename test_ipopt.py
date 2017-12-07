@@ -2,6 +2,8 @@ import pyipopt
 import numpy as np
 import math
 import itertools as it
+import dynamics as dy
+import pylab as plt
 
 def get_point_index(t, qdim, udim):
     # qdim, udim = self.qdim, self.udim
@@ -128,54 +130,87 @@ class Ipopt_Constriants_Jacobian:
 
 if __name__=="__main__":
 
-    X = np.array([0, 0, 10, 0, 0, 2, 0, 0, 5])
-    goal1 = np.array([2, 3])
-    goal2 = np.array([4, 5])
-
     prob = {}
-    prob["n"] = 3
+    prob["n"] = 100
     prob["qdim"] = 1
     prob["udim"] = 1
+    prob["dt"] = 1.0/( prob["n"]-1 )
+
+    start = np.array((0, 0))
+    end = np.array((10, 0))
+    n = prob["n"]
+    q_arr = np.linspace(start[0], end[0], n)
+    v_arr = np.linspace(start[1], end[1], n)
+    u_arr = np.ones_like(q_arr, dtype=float)*0
+    X_init = np.vstack([q_arr, v_arr, u_arr]).flatten("F")
 
     cost = Control_Cost(prob)
-    foo = cost.eval_f(X)
+    # foo = cost.eval_f(X_init)
 
-    c1 = Goal_constriant(prob, goal1, 0)
+    c1 = Goal_constriant(prob, start, 0)
     c1_g = c1.eval_g
     c1_jac_g = c1.eval_jac_g
 
-    c2 = Goal_constriant(prob, goal2, 1)
+    c2 = Goal_constriant(prob, end, n-1)
     c2_g = c2.eval_g
     c2_jac_g = c2.eval_jac_g
 
-    eval_g_lst = [c1_g, c2_g]
-    eval_jac_g_lst = [c1_jac_g, c2_jac_g]
+    D_factory= dy.Dynamics_constriant
+    dynamics = dy.block_dymamics
+    dynamics_jac = dy.block_dymamics_jac
+
+
+    d_const_lst = [D_factory(prob, dynamics, dynamics_jac, t)
+                          for t in range(n-1)]
+
+    d_eval_g_lst = [c.eval_g for c in d_const_lst]
+    d_eval_jac_lst = [c.eval_jac_g for c in d_const_lst]
+
+    # d0 = dy.Dynamics_constriant(prob,
+    #                             dy.block_dymamics,
+    #                             dy.block_dymamics_jac, 0)
+    #
+    # d1 = dy.Dynamics_constriant(prob,
+    #                             dy.block_dymamics,
+    #                             dy.block_dymamics_jac, 1)
+
+    eval_g_lst = [c1_g, c2_g] + d_eval_g_lst
+    eval_jac_g_lst = [c1_jac_g, c2_jac_g] + d_eval_jac_lst
+    # eval_jac_g_lst = [c1_jac_g, c2_jac_g, d0.eval_jac_g]
 
     eval_g = Ipopt_Constriants(eval_g_lst)
     eval_jac_g = Ipopt_Constriants_Jacobian(eval_g_lst, eval_jac_g_lst)
 
 
-    g = eval_g(X)
-    jac = eval_jac_g(X, False)
-    mask = eval_jac_g(X, True)
+    g = eval_g(X_init)
+    jac = eval_jac_g(X_init, False)
+    mask = eval_jac_g(X_init, True)
 
-    x_L = np.ones(X.size)*-100
-    x_U = np.ones(X.size)*100
+    x_L = np.ones(X_init.size)*-100
+    x_U = np.ones(X_init.size)*100
 
 
-    nvar = X.size
-    ncon = eval_g.get_num_constraints(X)
+    nvar = X_init.size
+    ncon = eval_g.get_num_constraints(X_init)
 
     g_L = np.zeros(ncon)
     g_U = np.zeros(ncon)
 
-    nnzj = eval_jac_g.get_nnz(X)
+    nnzj = eval_jac_g.get_nnz(X_init)
 
     nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, nnzj, 0, cost.eval_f,
                         cost.eval_grad_f, eval_g, eval_jac_g)
 
 
-    output, zl, zu, constraint_multipliers, obj, status = nlp.solve(X)
-
+    output, zl, zu, constraint_multipliers, obj, status = nlp.solve(X_init)
     print (output)
+
+    output_2d = output.reshape(n, -1)
+    Q = output_2d[:, 0]
+    V = output_2d[:, 1]
+    U = output_2d[:, 2]
+
+    plt.plot(Q, V)
+    plt.show()
+
 
