@@ -1,188 +1,195 @@
+import pyipopt
 import numpy as np
-import scipy as sp
-import itertools as it
-import pyipopt as ip
+import dynamics as dy
+import cost
+import constraint
+import pylab as plt
 
-def get_point_index(t, qdim, udim):
-    # qdim, udim = self.qdim, self.udim
-    point_dim = 2*qdim + udim
-    start = t*point_dim
-    qt_index = [start, start+qdim]
-    vt_index = [qt_index[-1], qt_index[-1]+qdim]
-    ut_index = [vt_index[-1], vt_index[-1]+udim]
-    return qt_index, vt_index, ut_index
-
-
-def block_dymamics(q, v, u):
-    return u
-
-
-def block_dymamics_jac(q, v, u):
-    jac = np.hstack([np.zeros_like(q), np.zeros_like(v), np.ones_like(u)])
-    jac_2d = jac.reshape(1, -1)
-    return jac_2d
-
-
-class Point_constraint():
-    def __init__(self, goal, t, qdim, udim, dt):
-        self.goal = goal
-        self.t = t
-        self.qdim = qdim
-        self.udim = udim
-        self.dt = dt
-
-    # def eval_g(traj):
-    #     index =
-
-
-class Dynamic_constraints():
-    def __init__(self, qdim, udim, dt, n, dynamics, dynamics_g=None):
-        self.qdim = qdim
-        self.udim = udim
-        self.dynamics = dynamics
-        self.dynamics_jac = dynamics_g
-        self.dt = dt
-        self.n = n
-        self.point_dim = self.qdim*2+self.udim
-        self.size = (self.point_dim)*self.n
-        self.create_jacobian_mask()
-
-    def create_jacobian_mask(self):
-        jac_row_lst = [self.get_point_jac_mask(t) for t in range(0, self.n-1)]
-        self.jac_mask = np.vstack(jac_row_lst)
-        self.jac_index = np.where(self.jac_mask==True)
-
-    def get_point_jac_mask(self, t):
-        q_jac = self.get_point_q_jac_mask(t)
-        v_jac = self.get_point_v_jac_mask(t)
-        point_jac_mask = np.vstack([q_jac, v_jac])
-        return point_jac_mask
-
-    def get_point_q_jac_mask(self, t):
-        q_jac_lst = [self.get_point_q_dim_jac_mask(t, i)
-                     for i in range(self.qdim)]
-        q_jac = np.vstack(q_jac_lst)
-        return q_jac
-
-
-    def get_point_q_dim_jac_mask(self, t, i):
-        q0_i = (self.point_dim)*t + i
-        q1_i = (self.point_dim)*(t+1) + i
-        v0_i = q0_i + self.qdim
-        v1_i = q1_i + self.qdim
-        q_dim_jac = np.zeros(self.size, dtype=bool)
-        q_dim_jac[[q0_i, q1_i, v0_i, v1_i]] = True
-        return q_dim_jac
-
-
-    def get_point_v_jac_mask(self, t):
-        v_jac = np.zeros((self.qdim, self.size), dtype=bool)
-        q0_index, v0_index, u0_index = get_point_index(t, self.qdim, self.udim)
-        q1_index, v1_index, u1_index = get_point_index(t+1, self.qdim, self.udim)
-        v_jac[:, q0_index[0]:u1_index[-1]] = True
-        return v_jac
-
-
-    def get_point_jac_value(self, traj, t):
-        q_jac_lst = [-1, -0.5*self.dt, 1, -0.5*self.dt] * self.qdim
-        # postion derivative
-
-        q0_index, v0_index, u0_index = get_point_index(t, self.qdim, self.udim)
-        q1_index, v1_index, u1_index = get_point_index(t+1, self.qdim, self.udim)
-        q0 = traj[q0_index[0]:q0_index[-1]]
-        v0 = traj[v0_index[0]:v0_index[-1]]
-        u0 = traj[u0_index[0]:u0_index[-1]]
-        q1 = traj[q1_index[0]:q1_index[-1]]
-        v1 = traj[v1_index[0]:v1_index[-1]]
-        u1 = traj[u1_index[0]:u1_index[-1]]
-
-        a0_jac = self.dynamics_jac(q0, v0, u0)
-        a1_jac = self.dynamics_jac(q1, v1, u1)
-
-        dq0 = -0.5*self.dt*a0_jac[:,0:self.qdim]
-        dv0 = -1 - 0.5*self.dt*a0_jac[:, self.qdim:2*self.qdim]
-        du0 = -0.5*self.dt*a0_jac[:, 2*self.qdim:2*self.qdim+self.udim]
-
-        dq1 = -0.5*self.dt*a1_jac[:,0:self.qdim]
-        dv1 = 1 - 0.5*self.dt*a1_jac[:, self.qdim:2*self.qdim]
-        du1 = -0.5*self.dt*a1_jac[:, 2*self.qdim:2*self.qdim+self.udim]
-
-        v_jac = np.concatenate([dq0, dv0, du0, dq1, dv1, du1], axis=1)
-        v_jac_flat = v_jac.flatten()
-
-        point_jac_flat = np.hstack([q_jac_lst, v_jac_flat])
-        return point_jac_flat
-
-
-    def get_keypoints_index(self, t):
-        qdim, udim = self.qdim, self.udim
-        start = t*self.point_dim
-        qt_index = [start, start+qdim]
-        vt_index = [qt_index[-1], qt_index[-1]+qdim]
-        ut_index = [vt_index[-1], vt_index[-1]+udim]
-        return qt_index, vt_index, ut_index
-
-
-    def dynamic_error(self, t, traj):
-        q0_index, v0_index, u0_index = self.get_keypoints_index(t)
-        q1_index, v1_index, u1_index = self.get_keypoints_index(t+1)
-        q0 = traj[q0_index[0]:q0_index[-1]]
-        v0 = traj[v0_index[0]:v0_index[-1]]
-        u0 = traj[u0_index[0]:u0_index[-1]]
-        q1 = traj[q1_index[0]:q1_index[-1]]
-        v1 = traj[v1_index[0]:v1_index[-1]]
-        u1 = traj[u1_index[0]:u1_index[-1]]
-
-        x0 = traj[q0_index[0]:v0_index[-1]]
-        x1 = traj[q1_index[0]:v1_index[-1]]
-        # the deviavie respect to [q, v], not including u: x_dot = f(x, u)
-        #TODO: each point is evaluted twice; this can be improved
-        d0 = np.hstack([v0, self.dynamics(q0, v0, u0)])
-        d1 = np.hstack([v1, self.dynamics(q1, v1, u1)])
-
-        error = (x1 - x0) - 0.5*self.dt*(d0 + d1) #3.2 of Kelly(2017)
-        return error
-
-    def eval_g(self, traj):
-        residual = [self.dynamic_error(t, traj) for t in range(0, self.n-1)]
-        return np.hstack(residual)
-        # return np.sum(np.hstack(residual))
-
-
-    def eval_jac_g(self, X, flag):
-        if flag:
-            return self.jac_index
-        point_jac_lst = [self.get_point_jac_value(X, t)
-                         for t in range(0, self.n-1)]
-        jac_flat = np.hstack(point_jac_lst)
-        return jac_flat
-
-
-def eval_f(X):
-    #this is the cost function
-    q_arr, v_arr, u_arr = X.reshape(-1, 3).T
-    square = np.power(u_arr, 2)
-    cost = np.sum(square)
-    return cost
-
-
-def eval_g(X):
-    q_arr, v_arr, u_arr = X.reshape(-1, 3).T
+# class Control_Cost():
+#     def __init__(self, prob):
+#         self.prob = prob
+#
+#     def eval_f(self, X):
+#         n = self.prob["n"]
+#         qdim = self.prob["qdim"]
+#         udim = self.prob["udim"]
+#         x_2d = X.reshape(n, 2*qdim+udim)
+#         u = x_2d[:, 2*qdim:]
+#         value = np.sum(np.power(u, 2))
+#         return value
+#
+#
+#     def eval_grad_f(self, X):
+#         n = self.prob["n"]
+#         qdim = self.prob["qdim"]
+#         udim = self.prob["udim"]
+#         x_2d = X.reshape(n, 2*qdim+udim)
+#         u = x_2d[:, 2*qdim:]
+#
+#         grad_2d = np.zeros_like(x_2d)
+#         grad_2d[:, 2*qdim:] = u
+#         grad = grad_2d.flatten()
+#         return grad
+#
+#
+# class Goal_constriant():
+#     def __init__(self, prob, goal, t):
+#         self.prob = prob
+#         self.goal = goal
+#         self.t = t
+#
+#     def eval_g(self, X):
+#         q, v, u = dy.get_point_q_v_u(X, self.t, self.prob['qdim'], self.prob['udim'])
+#         error = np.hstack([q, v]) - self.goal
+#         error_2 = np.power(error, 2)
+#         return error_2
+#
+#     def eval_jac_g(self, X, flag):
+#         qdim = self.prob["qdim"]
+#         udim = self.prob["udim"]
+#         if flag:
+#             pdim = 2*qdim + udim
+#             start = pdim*self.t
+#             end = start + 2*qdim
+#             row = np.arange(0, 2*qdim)
+#             col = np.arange(start, end)
+#             return (row, col)
+#         q, v, u = dy.get_point_q_v_u(X, self.t, qdim, udim)
+#         error = np.hstack([q, v]) - self.goal
+#         jac_value = 2*error
+#         return jac_value
+#
+#
+# class Ipopt_Constriants:
+#     def __init__(self, g_func_lst):
+#         self.g_func_lst = g_func_lst
+#
+#     def get_num_constraints(self, X):
+#         error_arr = self.__call__(X)
+#         return error_arr.size
+#
+#     def __call__(self, X):
+#         error_lst = [g(X) for g in self.g_func_lst]
+#         error_arr = np.hstack(error_lst)
+#         return error_arr
+#
+#
+# class Ipopt_Constriants_Jacobian:
+#     def __init__(self, g_func_lst, g_jac_func_lst):
+#         assert len(g_func_lst) == len(g_jac_func_lst)
+#         self.g_func_lst = g_func_lst
+#         self.g_jac_func_lst = g_jac_func_lst
+#         self.N = len(self.g_jac_func_lst)
+#
+#     def get_start_row_lst(self, X):
+#         size_lst = [0] + [g(X).size for g in self.g_func_lst[0:-1]]
+#         start_row_lst = list( np.cumsum(size_lst))
+#         return start_row_lst
+#
+#     def get_nnz(self, X):
+#         value_arr = self.__call__(X, False)
+#         return value_arr.size
+#
+#
+#     def __call__(self, X, flag):
+#         result_iter = (g_jac(X, flag) for g_jac in self.g_jac_func_lst)
+#         if flag:# return positions, not values
+#             start_row_lst = self.get_start_row_lst(X)
+#             rows_cols_iter = result_iter
+#             raw_rows_lst, cols_lst = zip(*result_iter)
+#             cols = np.hstack(cols_lst)
+#             row_lst =[raw_rows+start_row_lst[i]
+#                       for (i, raw_rows) in enumerate(raw_rows_lst)]
+#             rows = np.hstack(row_lst)
+#             return rows, cols
+#         value_iter = result_iter
+#         value_lst = list(value_iter)
+#         value_arr = np.hstack(value_lst)
+#         return value_arr
 
 
 if __name__=="__main__":
-    n = 20 # number of time point
-    dt = 1/n
-    start = (0, 0)
-    end = (1, 1)
+
+    prob = {}
+    prob["n"] = 100
+    prob["qdim"] = 1
+    prob["udim"] = 1
+    prob["dt"] = 1.0/( prob["n"]-1 )
+
+    start = np.array((0, 0))
+    end = np.array((10, 0))
+    n = prob["n"]
     q_arr = np.linspace(start[0], end[0], n)
     v_arr = np.linspace(start[1], end[1], n)
-    u_arr = np.zeros_like(q_arr, dtype=float)
+    u_arr = np.ones_like(q_arr, dtype=float)*0
     X_init = np.vstack([q_arr, v_arr, u_arr]).flatten("F")
 
-    constriant = Dynamic_constraints(1, 1, dt, n, block_dymamics, block_dymamics_jac)
-    g = constriant.eval_g(X_init)
-    result = constriant.eval_jac_g(X_init, False)
+    ctrl_cost = cost.Control_Cost(prob)
 
+    c1 = constraint.Goal_constriant(prob, start, 0)
+    c1_g = c1.eval_g
+    c1_jac_g = c1.eval_jac_g
+
+    c2 = constraint.Goal_constriant(prob, end, n-1)
+    c2_g = c2.eval_g
+    c2_jac_g = c2.eval_jac_g
+
+    D_factory= constraint.Dynamics_constriant
+    dynamics = dy.block_dymamics
+    dynamics_jac = dy.block_dymamics_jac
+
+
+    d_const_lst = [D_factory(prob, dynamics, dynamics_jac, t)
+                          for t in range(n-1)]
+
+    d_eval_g_lst = [c.eval_g for c in d_const_lst]
+    d_eval_jac_lst = [c.eval_jac_g for c in d_const_lst]
+
+    # d0 = dy.Dynamics_constriant(prob,
+    #                             dy.block_dymamics,
+    #                             dy.block_dymamics_jac, 0)
+    #
+    # d1 = dy.Dynamics_constriant(prob,
+    #                             dy.block_dymamics,
+    #                             dy.block_dymamics_jac, 1)
+
+    eval_g_lst = [c1_g, c2_g] + d_eval_g_lst
+    eval_jac_g_lst = [c1_jac_g, c2_jac_g] + d_eval_jac_lst
+    # eval_jac_g_lst = [c1_jac_g, c2_jac_g, d0.eval_jac_g]
+
+    eval_g = constraint.Ipopt_Constriants(eval_g_lst)
+    eval_jac_g = constraint.Ipopt_Constriants_Jacobian(eval_g_lst, eval_jac_g_lst)
+
+
+    g = eval_g(X_init)
+    jac = eval_jac_g(X_init, False)
+    mask = eval_jac_g(X_init, True)
+
+    x_L = np.ones(X_init.size)*-100
+    x_U = np.ones(X_init.size)*100
+
+
+    nvar = X_init.size
+    ncon = eval_g.get_num_constraints(X_init)
+
+    g_L = np.zeros(ncon)
+    g_U = np.zeros(ncon)
+
+    nnzj = eval_jac_g.get_nnz(X_init)
+
+    nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, nnzj, 0, ctrl_cost.eval_f,
+                        ctrl_cost.eval_grad_f, eval_g, eval_jac_g)
+
+
+    output, zl, zu, constraint_multipliers, obj, status = nlp.solve(X_init)
+    print (output)
+
+    output_2d = output.reshape(n, -1)
+    Q = output_2d[:, 0]
+    V = output_2d[:, 1]
+    U = output_2d[:, 2]
+
+    plt.plot(Q, V)
+    plt.show()
 
 
