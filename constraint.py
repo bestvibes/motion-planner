@@ -145,7 +145,7 @@ class Dynamics_constriant():
         return jac_flat
 
 
-class Ipopt_Constriants:
+class Stacked_Constriants:
     def __init__(self, g_func_lst):
         self.g_func_lst = g_func_lst
 
@@ -157,6 +157,25 @@ class Ipopt_Constriants:
         error_lst = [g(X) for g in self.g_func_lst]
         error_arr = np.hstack(error_lst)
         return error_arr
+
+class Stacked_Jacobian_Constraints:
+    def __init__(self, g_func_lst, x_L, x_U):
+        self.g_func_lst = g_func_lst
+        self.N = len(self.g_func_lst)
+        self.jac_func_lst =[Sparse_Jacobian(g, x_L, x_U)
+                            for g in self.g_func_lst]
+
+    def get_start_row_lst(self, X):
+        size_lst = [0] + [g(X).size for g in self.g_func_lst[0:-1]]
+        start_row_lst = list( np.cumsum(size_lst))
+        return start_row_lst
+
+    def get_nnz(self, X):
+        value_arr = self.__call__(X, False)
+        return value_arr.size
+
+
+    def __call(X, flag):
 
 
 class Ipopt_Constriants_Jacobian:
@@ -192,7 +211,6 @@ class Ipopt_Constriants_Jacobian:
         value_arr = np.hstack(value_lst)
         return value_arr
 
-
 class Sparse_Jacobian:
     def __init__(self, eval_g, rows, cols):
         self.J_func = nd.Jacobian(eval_g)
@@ -206,3 +224,17 @@ class Sparse_Jacobian:
         J = self.J_func(X)
         values = J[self.rows, self.cols]
         return values
+
+# class Sparse_Jacobian:
+#     def __init__(self, eval_g, rows, cols):
+#         self.J_func = nd.Jacobian(eval_g)
+#         self.rows = rows
+#         self.cols = cols
+#
+#     def __call__(self, X, flag):
+#         if flag:
+#             return self.rows, self.cols
+#
+#         J = self.J_func(X)
+#         values = J[self.rows, self.cols]
+#         return values
