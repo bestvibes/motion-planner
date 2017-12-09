@@ -1,5 +1,6 @@
 import numpy as np
 import util
+import numdifftools as nd
 
 class Goal_constriant():
     def __init__(self, prob, goal, t):
@@ -46,16 +47,25 @@ class Dynamics_constriant():
         self.vel_jac_lst = self.vel_dim_jac * self.prob['qdim']
 
     def eval_g(self, traj):
-        q0, v0, u0 = util.get_q_v_u_from_indexes(traj, self.q0_i, self.v0_i, self.u0_i)
-        q1, v1, u1 = util.get_q_v_u_from_indexes(traj, self.q1_i, self.v1_i, self.u1_i)
+        # q0, v0, u0 = util.get_q_v_u_from_indexes(traj, self.q0_i, self.v0_i, self.u0_i)
+        # q1, v1, u1 = util.get_q_v_u_from_indexes(traj, self.q1_i, self.v1_i, self.u1_i)
 
-        x0 = np.hstack([q0, v0])
-        x1 = np.hstack([q1, v1])
+        v0 = traj[self.v0_i[0]:self.v0_i[1]]
+        v1 = traj[self.v1_i[0]:self.v1_i[1]]
 
-        d0 = np.hstack([v0, self.dynamics(q0, v0, u0)])
-        d1 = np.hstack([v1, self.dynamics(q1, v1, u1)])
+        qvu0 = traj[self.q0_i[0]:self.u0_i[-1]]
+        qvu1 = traj[self.q0_i[0]:self.u0_i[-1]]
+
+        qv0 = traj[self.q0_i[0]:self.v0_i[-1]]
+        qv1 = traj[self.q1_i[0]:self.v1_i[-1]]
+
+        # x0 = np.hstack([q0, v0])
+        # x1 = np.hstack([q1, v1])
+
+        d0 = np.hstack([v0, self.dynamics(qvu0)])
+        d1 = np.hstack([v1, self.dynamics(qvu1)])
         #3.2 of Kelly(2017)
-        error = (x1 - x0) - 0.5*self.prob["dt"]*(d0 + d1)
+        error = (qv1 - qv0) - 0.5*self.prob["dt"]*(d0 + d1)
         return error
 
     def get_indexes(self, t):
@@ -112,11 +122,13 @@ class Dynamics_constriant():
         qdim = self.prob["qdim"]
         udim = self.prob["udim"]
 
-        q0, v0, u0 = util.get_q_v_u_from_indexes(traj, self.q0_i, self.v0_i, self.u0_i)
-        q1, v1, u1 = util.get_q_v_u_from_indexes(traj, self.q1_i, self.v1_i, self.u1_i)
+        # q0, v0, u0 = util.get_q_v_u_from_indexes(traj, self.q0_i, self.v0_i, self.u0_i)
+        # q1, v1, u1 = util.get_q_v_u_from_indexes(traj, self.q1_i, self.v1_i, self.u1_i)
+        qvu0 = traj[self.q0_i[0]:self.u0_i[-1]]
+        qvu1 = traj[self.q0_i[0]:self.u0_i[-1]]
 
-        a0_jac = self.dynamics_jac(q0, v0, u0)
-        a1_jac = self.dynamics_jac(q1, v1, u1)
+        a0_jac = self.dynamics_jac(qvu0)
+        a1_jac = self.dynamics_jac(qvu1)
 
         dq0 = -0.5*dt*a0_jac[:,0:qdim]
         dv0 = -1 - 0.5*dt*a0_jac[:, qdim:2*qdim]
@@ -181,3 +193,16 @@ class Ipopt_Constriants_Jacobian:
         return value_arr
 
 
+class Sparse_Jacobian:
+    def __init__(self, eval_g, rows, cols):
+        self.J_func = nd.Jacobian(eval_g)
+        self.rows = rows
+        self.cols = cols
+
+    def __call__(self, X, flag):
+        if flag:
+            return self.rows, self.cols
+
+        J = self.J_func(X)
+        values = J[self.rows, self.cols]
+        return values
