@@ -48,10 +48,10 @@ def make_model(model_path):
 
 
 class Mujoco_Dynamics:
-    def __init__(self, model, qdim, udim):
+    def __init__(self, model, sim, qdim, udim):
         # self.make_mode(model_path)
         self.model = model
-        self.sim = mujoco_py.MjSim(self.model)
+        self.sim = sim
         assert self.model.nq == qdim
         self.qdim = qdim
         self.udim = udim
@@ -71,14 +71,6 @@ class Mujoco_Dynamics:
         return qacc
 
 
-# def test_mujoco_dynamics(model_path):
-#     model = make_model(model_path)
-#
-#     qdim = model.nq
-#     import ipdb; ipdb.set_trace()  # XXX BREAKPOINT
-#
-#     carPole = Mujoco_Dynamics(model)
-
 
 if __name__=="__main__":
 
@@ -88,15 +80,14 @@ if __name__=="__main__":
     Jfun = nd.Jacobian(fun)
 
 
-
-
-    model_path = "/home/tao/projects/gym/gym/envs/mujoco/assets/inverted_pendulum.xml"
+    model_path = "/home/tao/src/gym/gym/envs/mujoco/assets/inverted_pendulum.xml"
 
     model = make_model(model_path)
+    sim = mujoco_py.MjSim(model)
     qdim = model.nq
     udim = model.nu
 
-    cart = Mujoco_Dynamics(model, qdim, udim)
+    cart = Mujoco_Dynamics(model, sim, qdim, udim)
 
     np.random.seed(42)
 

@@ -1,3 +1,4 @@
+#!/usr/bin/python3.6
 import pyipopt
 import numpy as np
 import dynamics as dy
