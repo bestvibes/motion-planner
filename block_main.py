@@ -13,9 +13,9 @@ np.set_printoptions(threshold=np.nan)
 
 def main():
     prob = {}
-    prob["n"] = 5
-    prob["qdim"] = 8
-    prob["udim"] = 8
+    prob["n"] = 20
+    prob["qdim"] = 2
+    prob["udim"] = 2
     prob["dt"] = 1.0/( prob["n"]-1)
 
     qdim = prob['qdim']
@@ -36,36 +36,44 @@ def main():
 
     c1 = constraint.Goal_constriant(prob, start, 0)
     c1_g = c1.eval_g
-    c1_jac_g = c1.eval_jac_g
+    # c1_jac_g = c1.eval_jac_g
 
     c2 = constraint.Goal_constriant(prob, end, n-1)
     c2_g = c2.eval_g
-    c2_jac_g = c2.eval_jac_g
+    c_index_lst =[c1.get_indexes(), c2.get_indexes()]
+
 
     D_factory= constraint.Dynamics_constriant
     block = dy.Block(prob["qdim"], prob["udim"])
     dynamics = block.dynamics
     jac_dynamics = block.jac_dynamics
-
-
-
+    #
+    #
+    #
     d_const_lst = [D_factory(prob, dynamics, jac_dynamics, t)
                           for t in range(n-1)]
 
-    d0 = d_const_lst[0]
+    # d0 = d_const_lst[0]
 
     # J_func = nd.Jacobian(d0.eval_g)
     # d_const_lst = [D_factory(prob, dynamics, jac_dynamics, t)
     #                       for t in range(2)]
     d_eval_g_lst = [c.eval_g for c in d_const_lst]
-    d_eval_jac_lst = [c.eval_jac_g for c in d_const_lst]
+    d_index_lst = [c.get_indexes() for c in d_const_lst]
+
+    # d_eval_jac_lst = [c.eval_jac_g for c in d_const_lst]
 
     x_L = np.ones(X_init.size)*-100
     x_U = np.ones(X_init.size)*100
 
+
     eval_g_lst = [c1_g, c2_g] + d_eval_g_lst
-    eval_jac_g_lst = [constraint.Sparse_Jacobian(g, x_L, x_U)
-                    for g in eval_g_lst]
+    # eval_g_lst = [c1_g, c2_g]
+    indexes_lst = c_index_lst +  d_index_lst
+    x_L_lst = [x_L[i] for i in indexes_lst]
+    x_U_lst = [x_U[i] for i in indexes_lst]
+    eval_jac_g_lst = [constraint.Sparse_Jacobian(g, x_L_lst[i], x_U_lst[i])
+                    for (i, g) in enumerate(eval_g_lst)]
     # eval_jac_g_lst = [c1_jac_g, c2_jac_g] + d_eval_jac_lst
     # eval_g_lst = [c1_g, c2_g]+[d0.eval_g]
     # eval_jac_g_lst = [c1_jac_g, c2_jac_g]
@@ -76,11 +84,13 @@ def main():
     # eval_jac_g_lst = [c2_jac_g, c1_jac_g]
 
 
-    eval_g = constraint.Stacked_Constriants(eval_g_lst)
-    J_rows, J_cols = util.get_func_sparse_pattern(eval_g, x_L, x_U)
+    eval_g = constraint.Stacked_Constriants(eval_g_lst, indexes_lst)
+    # J_rows, J_cols = util.get_func_sparse_pattern(eval_g, x_L, x_U)
 
-    # eval_jac_g = constraint.Stacked_Constriants_Jacobian(eval_g_lst, eval_jac_g_lst)
-    eval_jac_g = constraint.Sparse_Jacobian_offline(eval_g, J_rows, J_cols)
+    eval_jac_g = constraint.Stacked_Constriants_Jacobian(eval_g_lst,
+                                                         eval_jac_g_lst,
+                                                         indexes_lst)
+    # eval_jac_g = constraint.Sparse_Jacobian_offline(eval_g, J_rows, J_cols)
 
 
     nvar = X_init.size
@@ -109,21 +119,22 @@ def main():
 
 
     output, zl, zu, constraint_multipliers, obj, status = nlp.solve(X_init)
-    # print (output)
+    output_2d = output.reshape(n, -1)
+    return output_2d, prob
     #
-    # output_2d = output.reshape(n, -1)
-    # Q = output_2d[:, 0]
-    # V = output_2d[:, qdim]
-    # # U = output_2d[:, 4:]
-    #
-    # plt.plot(Q, V)
-    # plt.show()
 
 
 
 if __name__ == "__main__":
 
     start_time = time.time()
-    main()
+    output_2d, prob = main()
     print("--- %s seconds ---" % (time.time() - start_time))
 
+    print (output_2d)
+    Q = output_2d[:, 0]
+    V = output_2d[:, prob["qdim"]]
+    # U = output_2d[:, 4:]
+
+    plt.plot(Q, V)
+    plt.show()

@@ -3,32 +3,43 @@ import util
 import numdifftools as nd
 import functools as ft
 
+
 class Goal_constriant():
     def __init__(self, prob, goal, t):
         self.prob = prob
         self.goal = goal
         self.t = t
 
-    def eval_g(self, X):
-        q, v, u = util.get_point_q_v_u(X, self.t, self.prob['qdim'], self.prob['udim'])
-        error = np.hstack([q, v]) - self.goal
+
+    def get_indexes(self):
+        qdim = self.prob['qdim']
+        udim = self.prob['udim']
+        pdim = 2*qdim + udim
+        start = self.t*pdim
+        end = start + 2*qdim
+        indexes = np.array(range(start, end))
+        return indexes
+
+    def eval_g(self, qv):
+        # q, v, u = util.get_point_q_v_u(X, self.t, self.prob['qdim'], self.prob['udim'])
+        error = np.hstack(qv) - self.goal
         error_2 = np.power(error, 2)
         return error_2
 
-    def eval_jac_g(self, X, flag):
-        qdim = self.prob["qdim"]
-        udim = self.prob["udim"]
-        if flag:
-            pdim = 2*qdim + udim
-            start = pdim*self.t
-            end = start + 2*qdim
-            row = np.arange(0, 2*qdim)
-            col = np.arange(start, end)
-            return (row, col)
-        q, v, u = util.get_point_q_v_u(X, self.t, qdim, udim)
-        error = np.hstack([q, v]) - self.goal
-        jac_value = 2*error
-        return jac_value
+    # def eval_jac_g(self, X, flag):
+    #     qdim = self.prob["qdim"]
+    #     udim = self.prob["udim"]
+    #     if flag:
+    #         pdim = 2*qdim + udim
+    #         start = pdim*self.t
+    #         end = start + 2*qdim
+    #         row = np.arange(0, 2*qdim)
+    #         col = np.arange(start, end)
+    #         return (row, col)
+    #     q, v, u = util.get_point_q_v_u(X, self.t, qdim, udim)
+    #     error = np.hstack([q, v]) - self.goal
+    #     jac_value = 2*error
+    #     return jac_value
 
 
 class Dynamics_constriant():
@@ -39,7 +50,7 @@ class Dynamics_constriant():
         self.dynamics = dynamics
         self.dynamics_jac = dynamics_jac
         self.t = t
-        self.get_indexes(t)
+        # self.get_indexes(t)
 
         #the jacobian of the positon error is determined by postion and  velocity
         #And it is not influenced by the dynamic_jac, which is associated with acc
@@ -47,32 +58,43 @@ class Dynamics_constriant():
         self.vel_dim_jac = [-1, -0.5*self.prob["dt"], 1, -0.5*self.prob["dt"]]
         self.vel_jac_lst = self.vel_dim_jac * self.prob['qdim']
 
-    def eval_g(self, traj):
-        # q0, v0, u0 = util.get_q_v_u_from_indexes(traj, self.q0_i, self.v0_i, self.u0_i)
-        # q1, v1, u1 = util.get_q_v_u_from_indexes(traj, self.q1_i, self.v1_i, self.u1_i)
-        v0 = traj[self.v0_i[0]:self.v0_i[1]]
-        v1 = traj[self.v1_i[0]:self.v1_i[1]]
+    def eval_g(self, points):
+        qdim = self.prob['qdim']
+        udim = self.prob['udim']
+        pdim = 2*qdim + udim
+        p0 = points[0:pdim]
+        p1 = points[pdim:2*pdim]
 
-        qvu0 = traj[self.q0_i[0]:self.u0_i[-1]]
-        qvu1 = traj[self.q0_i[0]:self.u0_i[-1]]
+        v0 = p0[qdim:2*qdim]
+        v1 = p1[qdim:2*qdim]
 
-        qv0 = traj[self.q0_i[0]:self.v0_i[-1]]
-        qv1 = traj[self.q1_i[0]:self.v1_i[-1]]
+        qv0 = p0[0:2*qdim]
+        qv1 = p1[0:2*qdim]
 
-        # x0 = np.hstack([q0, v0])
-        # x1 = np.hstack([q1, v1])
-
-        d0 = np.hstack([v0, self.dynamics(qvu0)])
-        d1 = np.hstack([v1, self.dynamics(qvu1)])
+        #TODO: p0 can be changed to a tuple so that dynamics can be memorized
+        d0 = np.hstack([v0, self.dynamics(p0)])
+        d1 = np.hstack([v1, self.dynamics(p1)])
         #3.2 of Kelly(2017)
         error = (qv1 - qv0) - 0.5*self.prob["dt"]*(d0 + d1)
         return error
 
-    def get_indexes(self, t):
+    # def get_indexes(self, t):
+    #     qdim = self.prob["qdim"]
+    #     udim = self.prob["udim"]
+    #     self.q0_i, self.v0_i, self.u0_i = util.get_point_index(t, qdim, udim)
+    #     self.q1_i, self.v1_i, self.u1_i = util.get_point_index(t+1, qdim, udim)
+
+    def get_indexes(self):
         qdim = self.prob["qdim"]
         udim = self.prob["udim"]
-        self.q0_i, self.v0_i, self.u0_i = util.get_point_index(t, qdim, udim)
-        self.q1_i, self.v1_i, self.u1_i = util.get_point_index(t+1, qdim, udim)
+        pdim = 2*qdim + udim
+        start = self.t*pdim
+        end = start+2*pdim
+        # q0_i, v0_i, u0_i = util.get_point_index(self.t, qdim, udim)
+        # q1_i, v1_i, u1_i = util.get_point_index(t+1, qdim, udim)
+        indexes = np.array(range(start, end))
+        return indexes
+
 
 
     def get_constant_vel_jac_value(self):
@@ -146,28 +168,32 @@ class Dynamics_constriant():
 
 
 class Stacked_Constriants:
-    def __init__(self, g_func_lst):
-        self.g_func_lst = g_func_lst
+    def __init__(self, g_func_lst, indexes_lst):
+        # self.g_func_lst = g_func_lst
+        self.g_i_lst = list(zip(g_func_lst, indexes_lst))
 
     def get_num_constraints(self, X):
         error_arr = self.__call__(X)
         return error_arr.size
 
     def __call__(self, X):
-        error_lst = [g(X) for g in self.g_func_lst]
+        error_lst = [g(X[i]) for (g, i) in self.g_i_lst]
         error_arr = np.hstack(error_lst)
         return error_arr
 
 
 class Stacked_Constriants_Jacobian:
-    def __init__(self, g_func_lst, g_jac_func_lst):
-        assert len(g_func_lst) == len(g_jac_func_lst)
+    def __init__(self, g_func_lst, g_jac_func_lst, indexes_lst):
+        assert len(g_func_lst) == len(g_jac_func_lst) == len(indexes_lst)
         self.g_func_lst = g_func_lst
         self.g_jac_func_lst = g_jac_func_lst
-        self.N = len(self.g_jac_func_lst)
+        self.indexs_lst = indexes_lst
+        # self.N = len(self.g_jac_func_lst)
+        self.g_gjac_i_lst = list(zip(g_func_lst, g_jac_func_lst, indexes_lst))
 
     def get_start_row_lst(self, X):
-        size_lst = [0] + [g(X).size for g in self.g_func_lst[0:-1]]
+
+        size_lst = [0] + [g(X[i]).size for (g, _, i) in self.g_gjac_i_lst[0:-1]]
         start_row_lst = list( np.cumsum(size_lst))
         return start_row_lst
 
@@ -178,14 +204,18 @@ class Stacked_Constriants_Jacobian:
 
     def __call__(self, X, flag):
         # result_iter = (g_jac(X, flag) for g_jac in self.g_jac_func_lst)
-        result_iter = (g_jac(tuple(X), flag) for g_jac in self.g_jac_func_lst)
+        result_iter = (g_jac(X[i], flag) for (_, g_jac, i) in self.g_gjac_i_lst)
         if flag:# return positions, not values
             start_row_lst = self.get_start_row_lst(X)
-            rows_cols_iter = result_iter
-            raw_rows_lst, cols_lst = zip(*result_iter)
+            local_cols_iter = result_iter
+            local_rows_lst, local_cols_lst = zip(*result_iter)
+            #convering local cols into global cols
+            cols_lst = [self.indexs_lst[i][c]
+                        for (i, c) in enumerate(local_cols_lst)]
+
             cols = np.hstack(cols_lst)
-            row_lst =[raw_rows+start_row_lst[i]
-                      for (i, raw_rows) in enumerate(raw_rows_lst)]
+            row_lst =[local_rows+start_row_lst[i]
+                      for (i, local_rows) in enumerate(local_rows_lst)]
             rows = np.hstack(row_lst)
             return rows, cols
         value_iter = result_iter
@@ -195,18 +225,20 @@ class Stacked_Constriants_Jacobian:
 
 
 class Sparse_Jacobian:
-    def __init__(self, eval_g, x_L=np.array([]), x_U=np.array([])):
+    def __init__(self, eval_g, x_L, x_U):
         self.J_func = nd.Jacobian(eval_g)
         assert x_L.size >0 and x_L.size == x_U.size
         self.rows, self.cols = util.get_func_sparse_pattern(eval_g, x_L, x_U)
+
 
     def __call__(self, X, flag):
         if flag:
             return self.rows, self.cols
 
-        J = self.J_func(np.asarray(X))
+        J = self.J_func(X)
         values = J[self.rows, self.cols]
         return values
+
 
 class Sparse_Jacobian_offline:
     def __init__(self, eval_g, rows, cols):

@@ -28,3 +28,26 @@ class Control_Cost():
         grad = grad_2d.flatten()
         return grad
 
+
+class Stacked_Costs(object):
+
+    """summing a list of costs, each only takes part of the input"""
+
+    def __init__(self, eval_f_lst, indexes_lst):
+        """TODO: to be defined1.
+
+        :eval_f_lst: TODO
+        :indexes_lst: TODO
+
+        """
+        # self._eval_f_lst = eval_f_lst
+        # self._indexes_lst = indexes_lst
+        self._f_i_pair_lst = zip(eval_f_lst, indexes_lst)
+
+    def eval_f(self, X):
+        cost_lst = [func(X[indexes]) for (func, indexes) in self._f_i_pair_lst]
+        return np.sum(cost_lst)
+
+
+
+
