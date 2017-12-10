@@ -1,6 +1,7 @@
 import numpy as np
 import util
 import numdifftools as nd
+import functools as ft
 
 class Goal_constriant():
     def __init__(self, prob, goal, t):
@@ -49,7 +50,6 @@ class Dynamics_constriant():
     def eval_g(self, traj):
         # q0, v0, u0 = util.get_q_v_u_from_indexes(traj, self.q0_i, self.v0_i, self.u0_i)
         # q1, v1, u1 = util.get_q_v_u_from_indexes(traj, self.q1_i, self.v1_i, self.u1_i)
-
         v0 = traj[self.v0_i[0]:self.v0_i[1]]
         v1 = traj[self.v1_i[0]:self.v1_i[1]]
 
@@ -158,27 +158,8 @@ class Stacked_Constriants:
         error_arr = np.hstack(error_lst)
         return error_arr
 
-class Stacked_Jacobian_Constraints:
-    def __init__(self, g_func_lst, x_L, x_U):
-        self.g_func_lst = g_func_lst
-        self.N = len(self.g_func_lst)
-        self.jac_func_lst =[Sparse_Jacobian(g, x_L, x_U)
-                            for g in self.g_func_lst]
 
-    def get_start_row_lst(self, X):
-        size_lst = [0] + [g(X).size for g in self.g_func_lst[0:-1]]
-        start_row_lst = list( np.cumsum(size_lst))
-        return start_row_lst
-
-    def get_nnz(self, X):
-        value_arr = self.__call__(X, False)
-        return value_arr.size
-
-
-    def __call(X, flag):
-
-
-class Ipopt_Constriants_Jacobian:
+class Stacked_Constriants_Jacobian:
     def __init__(self, g_func_lst, g_jac_func_lst):
         assert len(g_func_lst) == len(g_jac_func_lst)
         self.g_func_lst = g_func_lst
@@ -196,7 +177,8 @@ class Ipopt_Constriants_Jacobian:
 
 
     def __call__(self, X, flag):
-        result_iter = (g_jac(X, flag) for g_jac in self.g_jac_func_lst)
+        # result_iter = (g_jac(X, flag) for g_jac in self.g_jac_func_lst)
+        result_iter = (g_jac(tuple(X), flag) for g_jac in self.g_jac_func_lst)
         if flag:# return positions, not values
             start_row_lst = self.get_start_row_lst(X)
             rows_cols_iter = result_iter
@@ -211,7 +193,22 @@ class Ipopt_Constriants_Jacobian:
         value_arr = np.hstack(value_lst)
         return value_arr
 
+
 class Sparse_Jacobian:
+    def __init__(self, eval_g, x_L=np.array([]), x_U=np.array([])):
+        self.J_func = nd.Jacobian(eval_g)
+        assert x_L.size >0 and x_L.size == x_U.size
+        self.rows, self.cols = util.get_func_sparse_pattern(eval_g, x_L, x_U)
+
+    def __call__(self, X, flag):
+        if flag:
+            return self.rows, self.cols
+
+        J = self.J_func(np.asarray(X))
+        values = J[self.rows, self.cols]
+        return values
+
+class Sparse_Jacobian_offline:
     def __init__(self, eval_g, rows, cols):
         self.J_func = nd.Jacobian(eval_g)
         self.rows = rows
@@ -224,17 +221,3 @@ class Sparse_Jacobian:
         J = self.J_func(X)
         values = J[self.rows, self.cols]
         return values
-
-# class Sparse_Jacobian:
-#     def __init__(self, eval_g, rows, cols):
-#         self.J_func = nd.Jacobian(eval_g)
-#         self.rows = rows
-#         self.cols = cols
-#
-#     def __call__(self, X, flag):
-#         if flag:
-#             return self.rows, self.cols
-#
-#         J = self.J_func(X)
-#         values = J[self.rows, self.cols]
-#         return values

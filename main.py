@@ -6,16 +6,15 @@ import constraint
 import pylab as plt
 import numdifftools as nd
 import util
+import time
 
 np.set_printoptions(threshold=np.nan)
 
-
-if __name__=="__main__":
-
+def main():
     prob = {}
-    prob["n"] = 10
-    prob["qdim"] =2
-    prob["udim"] =2
+    prob["n"] = 5
+    prob["qdim"] = 8
+    prob["udim"] = 8
     prob["dt"] = 1.0/( prob["n"]-1)
 
     qdim = prob['qdim']
@@ -60,7 +59,12 @@ if __name__=="__main__":
     d_eval_g_lst = [c.eval_g for c in d_const_lst]
     d_eval_jac_lst = [c.eval_jac_g for c in d_const_lst]
 
+    x_L = np.ones(X_init.size)*-100
+    x_U = np.ones(X_init.size)*100
+
     eval_g_lst = [c1_g, c2_g] + d_eval_g_lst
+    eval_jac_g_lst = [constraint.Sparse_Jacobian(g, x_L, x_U)
+                    for g in eval_g_lst]
     # eval_jac_g_lst = [c1_jac_g, c2_jac_g] + d_eval_jac_lst
     # eval_g_lst = [c1_g, c2_g]+[d0.eval_g]
     # eval_jac_g_lst = [c1_jac_g, c2_jac_g]
@@ -69,15 +73,13 @@ if __name__=="__main__":
     # eval_jac_g_lst = [c1_jac_g, c2_jac_g] + [d0.eval_jac_g]
     # eval_g_lst = [c2_g, c1_g]
     # eval_jac_g_lst = [c2_jac_g, c1_jac_g]
-    x_L = np.ones(X_init.size)*-100
-    x_U = np.ones(X_init.size)*100
 
 
-    eval_g = constraint.Ipopt_Constriants(eval_g_lst)
+    eval_g = constraint.Stacked_Constriants(eval_g_lst)
     J_rows, J_cols = util.get_func_sparse_pattern(eval_g, x_L, x_U)
 
-    # eval_jac_g = constraint.Ipopt_Constriants_Jacobian(eval_g_lst, eval_jac_g_lst)
-    eval_jac_g_n = constraint.Sparse_Jacobian(eval_g, J_rows, J_cols)
+    # eval_jac_g = constraint.Stacked_Constriants_Jacobian(eval_g_lst, eval_jac_g_lst)
+    eval_jac_g = constraint.Sparse_Jacobian_offline(eval_g, J_rows, J_cols)
 
 
     nvar = X_init.size
@@ -90,30 +92,37 @@ if __name__=="__main__":
     # np.random.seed(43)
     # X_init = np.random.uniform(x_L, x_U, x_L.size)
 
-    # nnzj = eval_jac_g(X_init, True)[0].size
-    nnzj = J_rows.size
+    nnzj = eval_jac_g(X_init, True)[0].size
+    # nnzj = J_rows.size
 
     g = eval_g(X_init)
     # jac = eval_jac_g(X_init, False)
     # jac_n = eval_jac_g_n(X_init, False)
     # mask = eval_jac_g(X_init, True)
-    mask_n = eval_jac_g_n(X_init, True)
+    mask_n = eval_jac_g(X_init, True)
     # print ( mask, mask_n )
     print ( mask_n)
 
     nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, nnzj, 0, ctrl_cost.eval_f,
-                        ctrl_cost.eval_grad_f, eval_g, eval_jac_g_n)
+                        ctrl_cost.eval_grad_f, eval_g, eval_jac_g)
 
 
     output, zl, zu, constraint_multipliers, obj, status = nlp.solve(X_init)
-    print (output)
+    # print (output)
+    #
+    # output_2d = output.reshape(n, -1)
+    # Q = output_2d[:, 0]
+    # V = output_2d[:, qdim]
+    # # U = output_2d[:, 4:]
+    #
+    # plt.plot(Q, V)
+    # plt.show()
 
-    output_2d = output.reshape(n, -1)
-    Q = output_2d[:, 0]
-    V = output_2d[:, qdim]
-    # U = output_2d[:, 4:]
 
-    plt.plot(Q, V)
-    plt.show()
 
+if __name__ == "__main__":
+
+    start_time = time.time()
+    main()
+    print("--- %s seconds ---" % (time.time() - start_time))
 
