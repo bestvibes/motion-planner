@@ -43,12 +43,12 @@ class Goal_constriant():
 
 
 class Dynamics_constriant():
-    def __init__(self, prob, dynamics, dynamics_jac, t):
+    def __init__(self, prob, dynamics,  t):
         #the size of the eval_g is 2*qdim, for q_dot and q_dot_dot
         #the shape of the jacobian is ( 2*qdim,  ||traj|| )
         self.prob = prob
         self.dynamics = dynamics
-        self.dynamics_jac = dynamics_jac
+        # self.dynamics_jac = dynamics_jac
         self.t = t
         # self.get_indexes(t)
 
@@ -95,76 +95,74 @@ class Dynamics_constriant():
         indexes = np.array(range(start, end))
         return indexes
 
-
-
-    def get_constant_vel_jac_value(self):
-        self.dim_q_jac_lst = [-1, -0.5*self.prob["dt"], 1, -0.5*self.prob["dt"]]
-        #repeat this with qdim times, one for each qdim
-        self.q_jac_lst = self.dim_q_jac_lst * self.prob['qdim']
-
-
-    def get_vel_jac_positions(self):
-        qdim = self.prob["qdim"]
-        udim = self.prob["udim"]
-        pdim = 2 * qdim + udim
-        t = self.t
-        def get_dim_jac_cols(t, d):
-            q0_i = pdim*t + d
-            q1_i = pdim*(t+1) + d
-            v0_i = q0_i + qdim
-            v1_i = q1_i + qdim
-            return [q0_i, v0_i, q1_i, v1_i]
-
-        cols_lst = [get_dim_jac_cols(t, d) for d in range(qdim)]
-        rows_lst = [[r]*len(cols) for (r, cols) in enumerate(cols_lst)]
-
-        cols_arr = np.hstack(cols_lst)
-        rows_arr = np.hstack(rows_lst)
-        return rows_arr, cols_arr
-
-    def get_acc_jac_positions(self):
-        qdim = self.prob["qdim"]
-        cols_lst = [list(range(self.q0_i[0], self.u1_i[-1])) for i in range(qdim)]
-        #acc starts from row qdim
-        rows_lst = [[r+qdim]*len(cols) for (r, cols) in enumerate(cols_lst)]
-
-        cols_arr = np.hstack(cols_lst)
-        rows_arr = np.hstack(rows_lst)
-        return rows_arr, cols_arr
-
-    def eval_jac_g(self, traj, flag):
-        if flag:
-            vel_rows, vel_cols = self.get_vel_jac_positions()
-            acc_rows, acc_cols = self.get_acc_jac_positions()
-            rows = np.hstack([vel_rows, acc_rows])
-            cols = np.hstack([vel_cols, acc_cols])
-            return rows, cols
-
-        dt = self.prob["dt"]
-        qdim = self.prob["qdim"]
-        udim = self.prob["udim"]
-
-        # q0, v0, u0 = util.get_q_v_u_from_indexes(traj, self.q0_i, self.v0_i, self.u0_i)
-        # q1, v1, u1 = util.get_q_v_u_from_indexes(traj, self.q1_i, self.v1_i, self.u1_i)
-        qvu0 = traj[self.q0_i[0]:self.u0_i[-1]]
-        qvu1 = traj[self.q0_i[0]:self.u0_i[-1]]
-
-        a0_jac = self.dynamics_jac(qvu0)
-        a1_jac = self.dynamics_jac(qvu1)
-
-        dq0 = -0.5*dt*a0_jac[:,0:qdim]
-        dv0 = -1 - 0.5*dt*a0_jac[:, qdim:2*qdim]
-        du0 = -0.5*dt*a0_jac[:, 2*qdim:2*qdim+udim]
-
-        dq1 = -0.5*dt*a1_jac[:,0:qdim]
-        dv1 = 1 - 0.5*dt*a1_jac[:, qdim:2*qdim]
-        du1 = -0.5*dt*a1_jac[:, 2*qdim:2*qdim+udim]
-
-        acc_jac = np.concatenate([dq0, dv0, du0, dq1, dv1, du1], axis=1)
-        acc_jac_flat = acc_jac.flatten()
-
-        jac_flat = np.hstack([self.vel_jac_lst, acc_jac_flat])
-        return jac_flat
+    # def get_constant_vel_jac_value(self):
+    #     self.dim_q_jac_lst = [-1, -0.5*self.prob["dt"], 1, -0.5*self.prob["dt"]]
+    #     #repeat this with qdim times, one for each qdim
+    #     self.q_jac_lst = self.dim_q_jac_lst * self.prob['qdim']
+    #
+    #
+    # def get_vel_jac_positions(self):
+    #     qdim = self.prob["qdim"]
+    #     udim = self.prob["udim"]
+    #     pdim = 2 * qdim + udim
+    #     t = self.t
+    #     def get_dim_jac_cols(t, d):
+    #         q0_i = pdim*t + d
+    #         q1_i = pdim*(t+1) + d
+    #         v0_i = q0_i + qdim
+    #         v1_i = q1_i + qdim
+    #         return [q0_i, v0_i, q1_i, v1_i]
+    #
+    #     cols_lst = [get_dim_jac_cols(t, d) for d in range(qdim)]
+    #     rows_lst = [[r]*len(cols) for (r, cols) in enumerate(cols_lst)]
+    #
+    #     cols_arr = np.hstack(cols_lst)
+    #     rows_arr = np.hstack(rows_lst)
+    #     return rows_arr, cols_arr
+    #
+    # def get_acc_jac_positions(self):
+    #     qdim = self.prob["qdim"]
+    #     cols_lst = [list(range(self.q0_i[0], self.u1_i[-1])) for i in range(qdim)]
+    #     #acc starts from row qdim
+    #     rows_lst = [[r+qdim]*len(cols) for (r, cols) in enumerate(cols_lst)]
+    #
+    #     cols_arr = np.hstack(cols_lst)
+    #     rows_arr = np.hstack(rows_lst)
+    #     return rows_arr, cols_arr
+    #
+    # def eval_jac_g(self, traj, flag):
+    #     if flag:
+    #         vel_rows, vel_cols = self.get_vel_jac_positions()
+    #         acc_rows, acc_cols = self.get_acc_jac_positions()
+    #         rows = np.hstack([vel_rows, acc_rows])
+    #         cols = np.hstack([vel_cols, acc_cols])
+    #         return rows, cols
+    #
+    #     dt = self.prob["dt"]
+    #     qdim = self.prob["qdim"]
+    #     udim = self.prob["udim"]
+    #
+    #     # q0, v0, u0 = util.get_q_v_u_from_indexes(traj, self.q0_i, self.v0_i, self.u0_i)
+    #     # q1, v1, u1 = util.get_q_v_u_from_indexes(traj, self.q1_i, self.v1_i, self.u1_i)
+    #     qvu0 = traj[self.q0_i[0]:self.u0_i[-1]]
+    #     qvu1 = traj[self.q0_i[0]:self.u0_i[-1]]
+    #
+    #     a0_jac = self.dynamics_jac(qvu0)
+    #     a1_jac = self.dynamics_jac(qvu1)
+    #
+    #     dq0 = -0.5*dt*a0_jac[:,0:qdim]
+    #     dv0 = -1 - 0.5*dt*a0_jac[:, qdim:2*qdim]
+    #     du0 = -0.5*dt*a0_jac[:, 2*qdim:2*qdim+udim]
+    #
+    #     dq1 = -0.5*dt*a1_jac[:,0:qdim]
+    #     dv1 = 1 - 0.5*dt*a1_jac[:, qdim:2*qdim]
+    #     du1 = -0.5*dt*a1_jac[:, 2*qdim:2*qdim+udim]
+    #
+    #     acc_jac = np.concatenate([dq0, dv0, du0, dq1, dv1, du1], axis=1)
+    #     acc_jac_flat = acc_jac.flatten()
+    #
+    #     jac_flat = np.hstack([self.vel_jac_lst, acc_jac_flat])
+    #     return jac_flat
 
 
 class Stacked_Constriants:

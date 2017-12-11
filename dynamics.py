@@ -58,9 +58,12 @@ class Mujoco_Dynamics:
         self.J_func = nd.Jacobian(self.dynamics)
 
     def dynamics(self, qvu):
+        qdim = self.qdim
+        udim = self.udim
         q = qvu[:qdim]
         v = qvu[qdim:2*qdim]
         u = qvu[2*qdim:]
+
         self.sim.data.qpos[:] = q
         self.sim.data.qvel[:] = v
         self.sim.data.ctrl[:] = u
@@ -86,6 +89,7 @@ if __name__=="__main__":
     sim = mujoco_py.MjSim(model)
     qdim = model.nq
     udim = model.nu
+    import ipdb; ipdb.set_trace()  # XXX BREAKPOINT
 
     cart = Mujoco_Dynamics(model, sim, qdim, udim)
 

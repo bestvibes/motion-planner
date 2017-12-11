@@ -8,24 +8,39 @@ import pylab as plt
 import numdifftools as nd
 import util
 import time
+import mujoco_py
+import click
 
 np.set_printoptions(threshold=np.nan)
 
+@click.command()
+@click.option('--scenario', type=str, default='', help='name of scenario script')
+@click.option('--traj_filename', type=str, default='/tmp/trajectory.pkl', help='filename of the solution trajectory')
 def main():
     prob = {}
     prob["n"] = 20
     prob["qdim"] = 2
-    prob["udim"] = 2
-    prob["dt"] = 1.0/( prob["n"]-1)
+    prob["udim"] = 1
+    prob["dt"] = 3.0/( prob["n"]-1)
+
+    #cartslider: [-1, 1]
+    #pole hinge: [-0.5pi ,0.5pi]
+    #ctrl range: [-3, 3]
+    p_L = [-20, -10*np.pi, -10, -3*np.pi, -3]
+    p_U = [20, 10*np.pi, 10, 3*np.pi,  3]
+
+    x_L =  np.tile(p_L, prob["n"])
+    x_U =  np.tile(p_U, prob["n"])
 
     qdim = prob['qdim']
     start = np.array([0]*qdim+[0]*qdim)
-    end = np.array([10]*qdim+[0]*qdim)
+    # end = np.array([0]*qdim+[0]*qdim)
+    end = np.array([0, np.pi/2] +[0]*qdim)
 
     n = prob["n"]
     q_v_arr_lst = [np.linspace(start[i], end[i], n) for i in range(2*prob['qdim'])]
-    # u_arr = np.zeros((prob["udim"], n))
-    u_arr = np.ones((prob["udim"], n))*2
+    u_arr = np.zeros((prob["udim"], n))
+    # u_arr = np.ones((prob["udim"], n))*2
     X_2d = np.vstack([q_v_arr_lst, u_arr])
 
     X_init = X_2d.T.flatten()
@@ -44,14 +59,23 @@ def main():
 
 
     D_factory= constraint.Dynamics_constriant
-    block = dy.Block(prob["qdim"], prob["udim"])
-    dynamics = block.dynamics
+
+    model_path = "/home/tao/src/gym/gym/envs/mujoco/assets/inverted_pendulum.xml"
+
+    model = dy.make_model(model_path)
+    sim = mujoco_py.MjSim(model)
+    qdim = model.nq
+    udim = model.nu
+
+    cart = dy.Mujoco_Dynamics(model, sim, qdim, udim)
+    dynamics = cart.dynamics
+    # block = dy.Block(prob["qdim"], prob["udim"])
+    # dynamics = block.dynamics
     # jac_dynamics = block.jac_dynamics
     #
     #
     #
-    d_const_lst = [D_factory(prob, dynamics,  t)
-                          for t in range(n-1)]
+    d_const_lst = [D_factory(prob, dynamics, t) for t in range(n-1)]
 
     # d0 = d_const_lst[0]
 
@@ -62,10 +86,6 @@ def main():
     d_index_lst = [c.get_indexes() for c in d_const_lst]
 
     # d_eval_jac_lst = [c.eval_jac_g for c in d_const_lst]
-
-    x_L = np.ones(X_init.size)*-100
-    x_U = np.ones(X_init.size)*100
-
 
     eval_g_lst = [c1_g, c2_g] + d_eval_g_lst
     # eval_g_lst = [c1_g, c2_g]
@@ -105,11 +125,8 @@ def main():
     mask_n = eval_jac_g(X_init, True)
     # print ( mask, mask_n )
     print ( mask_n)
-
     nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, nnzj, 0, ctrl_cost.eval_f,
                         ctrl_cost.eval_grad_f, eval_g, eval_jac_g)
-
-
     output, zl, zu, constraint_multipliers, obj, status = nlp.solve(X_init)
     output_2d = output.reshape(n, -1)
     return output_2d, prob
@@ -123,9 +140,9 @@ if __name__ == "__main__":
     output_2d, prob = main()
     print("--- %s seconds ---" % (time.time() - start_time))
 
-    print (output_2d)
-    Q = output_2d[:, 0]
-    V = output_2d[:, prob["qdim"]]
+    print(output_2d)
+    Q = output_2d[:, 1]
+    V = output_2d[:, prob["qdim"]+1]
     # U = output_2d[:, 4:]
 
     plt.plot(Q, V)
