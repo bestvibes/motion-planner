@@ -10,13 +10,13 @@ import util
 import time
 import mujoco_py
 import click
+# import pickle
 
 np.set_printoptions(threshold=np.nan)
 
 @click.command()
-@click.option('--scenario', type=str, default='', help='name of scenario script')
 @click.option('--traj_filename', type=str, default='/tmp/trajectory.pkl', help='filename of the solution trajectory')
-def main():
+def main(traj_filename):
     prob = {}
     prob["n"] = 20
     prob["qdim"] = 2
@@ -26,16 +26,17 @@ def main():
     #cartslider: [-1, 1]
     #pole hinge: [-0.5pi ,0.5pi]
     #ctrl range: [-3, 3]
-    p_L = [-20, -10*np.pi, -10, -3*np.pi, -3]
-    p_U = [20, 10*np.pi, 10, 3*np.pi,  3]
+    p_L = [-1, -np.pi, -2, -1*np.pi, -3]
+    p_U = [1, np.pi, 2, 1*np.pi,  3]
 
     x_L =  np.tile(p_L, prob["n"])
     x_U =  np.tile(p_U, prob["n"])
 
     qdim = prob['qdim']
     start = np.array([0]*qdim+[0]*qdim)
+    start[1] = -0.45*np.pi
     # end = np.array([0]*qdim+[0]*qdim)
-    end = np.array([0, np.pi/2] +[0]*qdim)
+    end = np.array([0, 0] +[0]*qdim)
 
     n = prob["n"]
     q_v_arr_lst = [np.linspace(start[i], end[i], n) for i in range(2*prob['qdim'])]
@@ -122,16 +123,17 @@ def main():
     # jac = eval_jac_g(X_init, False)
     # jac_n = eval_jac_g_n(X_init, False)
     # mask = eval_jac_g(X_init, True)
-    mask_n = eval_jac_g(X_init, True)
+    # mask_n = eval_jac_g(X_init, True)
     # print ( mask, mask_n )
-    print ( mask_n)
+    # print ( mask_n)
     nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, nnzj, 0, ctrl_cost.eval_f,
                         ctrl_cost.eval_grad_f, eval_g, eval_jac_g)
     output, zl, zu, constraint_multipliers, obj, status = nlp.solve(X_init)
     output_2d = output.reshape(n, -1)
+    # pickle.dump(output, traj_filename)
+    output.dump(traj_filename)
+    print ("dumping trajecoty at: "+ traj_filename)
     return output_2d, prob
-    #
-
 
 
 if __name__ == "__main__":

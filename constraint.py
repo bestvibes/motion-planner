@@ -2,6 +2,7 @@ import numpy as np
 import util
 import numdifftools as nd
 import functools as ft
+import adolc
 
 
 class Goal_constriant():
@@ -237,6 +238,34 @@ class Sparse_Jacobian:
         values = J[self.rows, self.cols]
         return values
 
+class Sparse_Jacobian_Adolc:
+    def __init__(self, eval_g, x_L, x_U, i):
+        self.i = i
+        # self.J_func = nd.Jacobian(eval_g)
+        assert x_L.size >0 and x_L.size == x_U.size
+        # self.rows, self.cols = util.get_func_sparse_pattern(eval_g, x_L, x_U)
+        x = np.random.uniform(x_L, x_U)
+        adolc.trace_on(i)
+        x = adolc.adouble(x)
+        adolc.independent(x)
+        adolc.dependent(eval_g)
+        adolc.trace_off()
+        self.options = np.array([0, 0, 0, 0], dtype=int)
+        jac_arr = adolc.jacobian(i, x)
+        self.rows, self.cols = np.where(jac_arr!=0)
+        import ipdb; ipdb.set_trace()  # XXX BREAKPOINT
+
+
+    def __call__(self, X, flag):
+        if flag:
+            return self.rows, self.cols
+        result = adolc.colpack.sparse_jac_no_repeat(0, x, options)
+        values = result[-1]
+        return values
+
+        # J = self.J_func(X)
+        # values = J[self.rows, self.cols]
+        # return values
 
 class Sparse_Jacobian_offline:
     def __init__(self, eval_g, rows, cols):
