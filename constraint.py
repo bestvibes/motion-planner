@@ -26,20 +26,20 @@ class Goal_constriant():
         error_2 = np.power(error, 2)
         return error_2
 
-    # def eval_jac_g(self, X, flag):
-    #     qdim = self.prob["qdim"]
-    #     udim = self.prob["udim"]
-    #     if flag:
-    #         pdim = 2*qdim + udim
-    #         start = pdim*self.t
-    #         end = start + 2*qdim
-    #         row = np.arange(0, 2*qdim)
-    #         col = np.arange(start, end)
-    #         return (row, col)
-    #     q, v, u = util.get_point_q_v_u(X, self.t, qdim, udim)
-    #     error = np.hstack([q, v]) - self.goal
-    #     jac_value = 2*error
-    #     return jac_value
+    def eval_jac_g(self, X, flag):
+        qdim = self.prob["qdim"]
+        udim = self.prob["udim"]
+        if flag:
+            pdim = 2*qdim + udim
+            start = pdim*self.t
+            end = start + 2*qdim
+            row = np.arange(0, 2*qdim)
+            col = np.arange(start, end)
+            return (row, col)
+        q, v, u = util.get_point_q_v_u(X, self.t, qdim, udim)
+        error = np.hstack([q, v]) - self.goal
+        jac_value = 2*error
+        return jac_value
 
 
 class Dynamics_constriant():
@@ -77,12 +77,6 @@ class Dynamics_constriant():
         #3.2 of Kelly(2017)
         error = (qv1 - qv0) - 0.5*self.prob["dt"]*(d0 + d1)
         return error
-
-    # def get_indexes(self, t):
-    #     qdim = self.prob["qdim"]
-    #     udim = self.prob["udim"]
-    #     self.q0_i, self.v0_i, self.u0_i = util.get_point_index(t, qdim, udim)
-    #     self.q1_i, self.v1_i, self.u1_i = util.get_point_index(t+1, qdim, udim)
 
     def get_indexes(self):
         qdim = self.prob["qdim"]
