@@ -4,7 +4,6 @@ import numdifftools as nd
 import functools as ft
 import adolc
 
-
 class Goal_constriant():
     def __init__(self, prob, goal, t):
         self.prob = prob
@@ -246,20 +245,20 @@ class Sparse_Jacobian_Adolc:
         # self.rows, self.cols = util.get_func_sparse_pattern(eval_g, x_L, x_U)
         x = np.random.uniform(x_L, x_U)
         adolc.trace_on(i)
-        x = adolc.adouble(x)
-        adolc.independent(x)
-        adolc.dependent(eval_g)
+        ax = adolc.adouble(x)
+        adolc.independent(ax)
+        ay = eval_g(ax)
+        # y = get_constriant_func(eval_g(x))
+        adolc.dependent(ay)
         adolc.trace_off()
         self.options = np.array([0, 0, 0, 0], dtype=int)
         jac_arr = adolc.jacobian(i, x)
         self.rows, self.cols = np.where(jac_arr!=0)
-        import ipdb; ipdb.set_trace()  # XXX BREAKPOINT
-
 
     def __call__(self, X, flag):
         if flag:
             return self.rows, self.cols
-        result = adolc.colpack.sparse_jac_no_repeat(0, x, options)
+        result = adolc.colpack.sparse_jac_no_repeat(self.i, X, self.options)
         values = result[-1]
         return values
 

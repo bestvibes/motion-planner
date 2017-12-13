@@ -67,14 +67,17 @@ def main():
     x_U = np.ones(X_init.size)*100
 
 
-    # eval_g_lst = [c1_g, c2_g] + d_eval_g_lst
-    eval_g_lst = [c1_g, c2_g]
+    eval_g_lst = [c1_g, c2_g] + d_eval_g_lst
+    # eval_g_lst = [c1_g, c2_g]
     indexes_lst = c_index_lst +  d_index_lst
+    # indexes_lst = c_index_lst
     x_L_lst = [x_L[i] for i in indexes_lst]
     x_U_lst = [x_U[i] for i in indexes_lst]
     eval_jac_g_lst = [constraint.Sparse_Jacobian_Adolc(g, x_L_lst[i], x_U_lst[i], i)
                     for (i, g) in enumerate(eval_g_lst)]
 
+    # eval_jac_g_lst = [constraint.Sparse_Jacobian(g, x_L_lst[i], x_U_lst[i])
+    #                 for (i, g) in enumerate(eval_g_lst)]
 
     eval_g = constraint.Stacked_Constriants(eval_g_lst, indexes_lst)
     # J_rows, J_cols = util.get_func_sparse_pattern(eval_g, x_L, x_U)
