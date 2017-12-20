@@ -58,11 +58,15 @@ class Mujoco_Dynamics:
         self.J_func = nd.Jacobian(self.dynamics)
 
     def dynamics(self, qvu):
+        if "adouble" in qvu[0].__repr__():
+            qvu_array = np.array([float(a.__str__()[0:-3]) for a in qvu])
+        else:
+            qvu_array = qvu
         qdim = self.qdim
         udim = self.udim
-        q = qvu[:qdim]
-        v = qvu[qdim:2*qdim]
-        u = qvu[2*qdim:]
+        q = qvu_array[:qdim]
+        v = qvu_array[qdim:2*qdim]
+        u = qvu_array[2*qdim:]
 
         self.sim.data.qpos[:] = q
         self.sim.data.qvel[:] = v
@@ -70,6 +74,7 @@ class Mujoco_Dynamics:
 
         #forward kinematcs, without time integration
         mujoco_py.functions.mj_forward(self.model, self.sim.data)
+        # mujoco_py.functions.mj_step(self.model, self.sim.data)
         qacc = np.copy(self.sim.data.qacc)
         return qacc
 

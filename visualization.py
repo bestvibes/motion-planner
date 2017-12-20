@@ -34,7 +34,7 @@ class Viz_Trajectory:
 
 
 @click.command()
-@click.option('--scenario', type=str, default='', help='name of scenario script')
+@click.option('--scenario', type=str, default='/home/tao/src/gym/gym/envs/mujoco/assets/inverted_pendulum.xml', help='name of scenario script')
 @click.option('--traj_filename', type=str, default='/tmp/trajectory.pkl', help='filename of the solution trajectory')
 def main(scenario, traj_filename):
     viz = Viz_Trajectory(scenario)

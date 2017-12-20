@@ -4,45 +4,34 @@ import numpy as np
 import dynamics as dy
 import cost
 import constraint
-import adolc_appro as aa
 import pylab as plt
+import numdifftools as nd
 import util
+import adolc_appro as aa
 import time
-import mujoco_py
-import click
-# import pickle
 
 np.set_printoptions(threshold=np.nan)
 
-@click.command()
-@click.option('--traj_filename', type=str, default='/tmp/trajectory.pkl', help='filename of the solution trajectory')
-def main(traj_filename):
+def main():
     prob = {}
-    prob["n"] = 10
+    prob["n"] = 20
     prob["qdim"] = 2
-    prob["udim"] = 1
-    # prob["dt"] = 0.1/( prob["n"]-1)
-    prob["dt"] = 0.1
-
-    p_L = [-2, -1*np.pi, -2, -np.pi, -3]
-    p_U = [2, 1*np.pi, 2, np.pi,  3]
-
-    x_L =  np.tile(p_L, prob["n"])
-    x_U =  np.tile(p_U, prob["n"])
+    prob["udim"] = 2
+    prob["dt"] = 1.0/( prob["n"]-1)
 
     qdim = prob['qdim']
     start = np.array([0]*qdim+[0]*qdim)
-    start[1] = -np.pi
-    start[1] = 0
-    end = np.array([0]*qdim+[0]*qdim)
+    end = np.array([10]*qdim+[0]*qdim)
 
     n = prob["n"]
     q_v_arr_lst = [np.linspace(start[i], end[i], n) for i in range(2*prob['qdim'])]
-    u_arr = np.ones((prob["udim"], n))*0.001
+    u_arr = np.ones((prob["udim"], n))*2
     X_2d = np.vstack([q_v_arr_lst, u_arr])
 
     X_init = X_2d.T.flatten()
-    # set the control cost
+    x_L = np.ones(X_init.size)*-100
+    x_U = np.ones(X_init.size)*100
+
     X_sample = np.random.uniform(x_L, x_U)
 
     #set the cost and the gradient of the cost
@@ -53,16 +42,10 @@ def main(traj_filename):
 
 
     #set the constriant function for points at specific time
-    g1 = np.array([-np.pi, 0])
-    g2 = np.array([0, 0])
-    points = [(0, g1), (n-1, g2)]
-    # points = [(n-1, end)]
-    # points = [(0, start)]
+    points = [(0, start), (n-1, end)]
     # p_index, p_g_func = [constraint.get_point_constriant(prob, t, g)
     #                      for (t, g) in points]
-    # q and v of the pole
-    dims = np.array([1,1+prob["qdim"]])
-    p_index_g_piar = [constraint.get_point_constriant(prob, t, g, dims)
+    p_index_g_piar = [constraint.get_point_constriant(prob, t, g)
                          for (t, g) in points]
     p_index_iter, p_g_func_iter = zip(*p_index_g_piar)
     p_index_lst = list(p_index_iter)
@@ -71,17 +54,9 @@ def main(traj_filename):
     # p_g_adolc_lst = [aa.Func_Adolc(g, X_sample[i])
     #                       for (i, g) in p_index_g_piar]
 
-    D_factory= constraint.Dynamics_constriant
-    model_path = "/home/tao/src/gym/gym/envs/mujoco/assets/inverted_pendulum.xml"
-
-    model = dy.make_model(model_path)
-    sim = mujoco_py.MjSim(model)
-    qdim = model.nq
-    udim = model.nu
-
-    cart = dy.Mujoco_Dynamics(model, sim, qdim, udim)
-    dynamics = cart.dynamics
-
+    #set the dynamic constriants
+    block = dy.Block(prob["qdim"], prob["udim"])
+    dynamics = block.dynamics
     d_index, d_g_func = constraint.get_dynamic_constriants(prob,
                                                            dynamics,
                                                            range(0, n-1))
@@ -92,6 +67,7 @@ def main(traj_filename):
     d_g_lst = [d_g_func for i in d_index]
 
     index_lst = p_index_lst + d_index
+    # eval_g_adolc_lst =  p_g_adolc_lst + d_g_adolc_lst
     eval_g_lst = p_g_lst + d_g_lst
 
     # X_sample_lst = [X_sample[i] for i in index_lst]
@@ -126,19 +102,20 @@ def main(traj_filename):
     g_L = np.zeros(ncon)
     g_U = np.zeros(ncon)
 
+
     nnzj = eval_jac_g_adolc.nnzj
     nnzh = eval_h_adolc.nnzh
-    nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, nnzj, 0, eval_f_adolc ,
-                        eval_grad_f_adolc, eval_g_adolc, eval_jac_g_adolc)
-    # nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, nnzj, nnzh, eval_f_adolc ,
-    #                     eval_grad_f_adolc, eval_g_adolc, eval_jac_g_adolc, eval_h_adolc)
+    import ipdb; ipdb.set_trace()  # XXX BREAKPOINT
+
+    # nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, nnzj, 0, eval_f_adolc ,
+    #                     eval_grad_f_adolc, eval_g_adolc, eval_jac_g_adolc)
+
+    nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, nnzj, nnzh, eval_f_adolc ,
+                        eval_grad_f_adolc, eval_g_adolc, eval_jac_g_adolc, eval_h_adolc)
 
     output, zl, zu, constraint_multipliers, obj, status = nlp.solve(X_init)
     output_2d = output.reshape(n, -1)
-    output.dump(traj_filename)
     return output_2d, prob
-
-
 
 if __name__ == "__main__":
 
@@ -146,7 +123,7 @@ if __name__ == "__main__":
     output_2d, prob = main()
     print("--- %s seconds ---" % (time.time() - start_time))
 
-    print(output_2d)
+    print (output_2d)
     Q = output_2d[:, 1]
     V = output_2d[:, prob["qdim"]+1]
     # U = output_2d[:, 4:]

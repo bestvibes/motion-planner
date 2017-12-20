@@ -2,29 +2,29 @@ import numpy as np
 
 class Control_Cost():
     def __init__(self, prob):
-        self.prob = prob
+        # self.prob = prob
+        self.n = prob["n"]
+        self.qdim = prob["qdim"]
+        self.udim = prob["udim"]
+        self.pdim = 2*self.qdim+self.udim
 
-    def eval_f(self, X):
-        prob = self.prob
-        n = prob["n"]
-        qdim = prob["qdim"]
-        udim = prob["udim"]
-        x_2d = X.reshape(n, 2*qdim+udim)
-        u = x_2d[:, 2*qdim:]
+    def __call__(self, X):
+        x_2d = X.reshape(self.n, self.pdim)
+        u = x_2d[:, 2*self.qdim:]
         value = np.sum(np.power(u, 2))
         return value
 
 
     def eval_grad_f(self, X):
-        prob = self.prob
-        n = prob["n"]
-        qdim = prob["qdim"]
-        udim = prob["udim"]
-        x_2d = X.reshape(n, 2*qdim+udim)
-        u = x_2d[:, 2*qdim:]
+        # # prob = self.prob
+        # n = prob["n"]
+        # qdim = prob["qdim"]
+        # udim = prob["udim"]
+        x_2d = X.reshape(self.n, self.pdim)
+        u = x_2d[:, 2*self.qdim:]
 
         grad_2d = np.zeros_like(x_2d)
-        grad_2d[:, 2*qdim:] = u
+        grad_2d[:, 2*self.qdim:] = u
         grad = grad_2d.flatten()
         return grad
 
