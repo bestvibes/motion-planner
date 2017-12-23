@@ -1,0 +1,205 @@
+//Tao Gao at UCLA
+#pragma once
+
+#include "IpTNLP.hpp"
+#include <array>
+#include <algorithm>  // std::copy
+#include <cassert>
+
+using namespace Ipopt;
+
+// template <unsigned int N>
+using Eval_F_Func = double (*)(const Number*);
+
+using Eval_Grad_F_Func = double* (*)(const Number*);
+
+using Eval_G_Func = double* (*)(const double*); 
+
+//cannot determine the size of the non-zero at compile time;  
+using Eval_Jac_G_Func = double* (*)(const double*); 
+
+//N is the size of the traj, M is the number of the constriants
+template <unsigned int N, unsigned int M >
+class Traj_NLP : public TNLP
+{
+public:
+  /** default constructor */
+  Traj_NLP(const Index _nnzj,
+					 const std::vector<Index>& _jRow,
+					 const std::vector<Index>& _jCol,
+					 const std::array<Number, N> _xl,
+					 const std::array<Number, N> _xu,
+					 const std::array<Number, M> _gl,
+					 const std::array<Number, M> _gu,
+					 Eval_F_Func _eval_f_func,
+					 Eval_Grad_F_Func _eval_grad_f_func,
+					 Eval_G_Func _eval_g_func,
+					 Eval_Jac_G_Func _eval_jac_g_func ):
+				nnzj(_nnzj),
+				jacRow(_jRow),
+				jacCol(_jCol),
+				xl(_xl),
+				xu(_xu),
+				gl(_gl),
+				gu(_gu),
+				eval_f_func(_eval_f_func),
+				eval_grad_f_func(_eval_grad_f_func),
+				eval_g_func(_eval_g_func),
+				eval_jac_g_func(_eval_jac_g_func)
+	{
+		assert(nnzj == jRow.size() == jcol.size());
+	};
+
+  /** default destructor */
+  virtual ~Traj_NLP();
+
+  /**@name Overloaded from TNLP */
+  //@{
+  /** Method to return some info about the nlp */
+   bool get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
+                            Index& nnz_h_lag, IndexStyleEnum& index_style) {
+	
+		// The problem described in Traj_NLP.hpp has 4 variables, x[0] through x[3]
+		n = N;
+
+		// one equality constraint and one inequality constraint
+		m = M;
+
+		// in this example the jacobian is dense and contains 8 nonzeros
+		nnz_jac_g = nnzj;
+
+		// the hessian is also dense and has 16 total nonzeros, but we
+		// only need the lower left corner (since it is symmetric)
+		// FIXME: this is a majic number here
+		nnz_h_lag = 10;
+
+		// use the C style indexing (0-based)
+		index_style = TNLP::C_STYLE;
+
+		return true;
+	
+	};
+
+  /** Method to return the bounds for my problem */
+  bool get_bounds_info(Index n, Number* x_l, Number* x_u,
+                               Index m, Number* g_l, Number* g_u){
+
+		x_l = xl.data();
+		x_u = xu.data();
+		g_l = gl.data();
+		g_u = gu.data();
+		return true;
+	}
+
+  /** Method to return the starting point for the algorithm */
+  bool get_starting_point(Index n, bool init_x, Number* x,
+                                  bool init_z, Number* z_L, Number* z_U,
+                                  Index m, bool init_lambda,
+                                  Number* lambda){
+	
+  // Here, we assume we only have starting values for x, if you code
+  // your own NLP, you can provide starting values for the dual variables
+  // if you wish
+  assert(init_x == true);
+  assert(init_z == false);
+  assert(init_lambda == false);
+
+	x = x_init.data();
+
+  return true;
+	}
+
+  /** Method to return the objective value */
+  bool eval_f(Index n, const Number* x, bool new_x, Number& obj_value){
+		obj_value = eval_f_func(x);
+		return true;
+	}
+
+  /** Method to return the gradient of the objective */
+  bool eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f){
+		grad_f =  eval_grad_f_func(x);
+		return true;
+	}
+
+  /** Method to return the constraint residuals */
+  bool eval_g(Index n, const Number* x, bool new_x, Index m, Number* g){
+		g = eval_g_func(x);
+		return true;
+	}
+
+  /** Method to return:
+   *   1) The structure of the jacobian (if "values" is NULL)
+   *   2) The values of the jacobian (if "values" is not NULL)
+   */
+   bool eval_jac_g(Index n, const Number* x, bool new_x,
+                          Index m, Index nele_jac, Index* iRow, Index *jCol,
+                          Number* values){
+
+		if (values == NULL) {
+			iRow = jacRow.data() ;
+			jCol = jacCol.data() ;
+		}
+		else{
+			values = eval_jac_g_func(x);
+		}
+
+		return true;
+	 }
+
+  /** Method to return:
+   *   1) The structure of the hessian of the lagrangian (if "values" is NULL)
+   *   2) The values of the hessian of the lagrangian (if "values" is not NULL)
+   */
+  // virtual bool eval_h(Index n, const Number* x, bool new_x,
+  //                     Number obj_factor, Index m, const Number* lambda,
+  //                     bool new_lambda, Index nele_hess, Index* iRow,
+  //                     Index* jCol, Number* values);
+
+  //@}
+
+  /** @name Solution Methods */
+  //@{
+  /** This method is called when the algorithm is complete so the TNLP can store/write the solution */
+  virtual void finalize_solution(SolverReturn status,
+                                 Index n, const Number* x, const Number* z_L, const Number* z_U,
+                                 Index m, const Number* g, const Number* lambda,
+                                 Number obj_value,
+				 const IpoptData* ip_data,
+				 IpoptCalculatedQuantities* ip_cq);
+  //@}
+
+private:
+  /**@name Methods to Block default compiler methods.
+   * The compiler automatically generates the following three methods.
+   *  Since the default compiler implementation is generally not what
+   *  you want (for all but the most simple classes), we usually 
+   *  put the declarations of these methods in the private section
+   *  and never implement them. This prevents the compiler from
+   *  implementing an incorrect "default" behavior without us
+   *  knowing. (See Scott Meyers book, "Effective C++")
+   *  
+   */
+  //@{
+  //  Traj_NLP();
+	// const std::string name;  
+	// const int xdim; 
+	// const int gdim;
+  //@}
+	const int nnzj;
+	// const int nnzh;
+	const std::vector<Index>& jacRow; 
+	const std::vector<Index>& jacCol; 
+	const std::array<double, N>& xl; 
+	const std::array<double, N>& xu; 
+	const std::array<double, N>& x_init;
+	const std::array<double, M>& gl;
+	const std::array<double, M>& gu;
+	Eval_F_Func eval_f_func;
+	Eval_Grad_F_Func eval_grad_f_func;
+	Eval_G_Func eval_g_func;
+	Eval_Jac_G_Func eval_jac_g_func;
+
+  Traj_NLP(const Traj_NLP&);
+  Traj_NLP& operator=(const Traj_NLP&);
+};
+
