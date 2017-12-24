@@ -8,8 +8,10 @@
 
 #include "IpIpoptApplication.hpp"
 #include "traj_nlp.hpp"
-
 #include <iostream>
+#include <algorithm>
+#include <functional>
+#include "hs071_func.hpp"
 
 using namespace Ipopt;
 
@@ -17,7 +19,37 @@ int main(int argv, char* argc[])
 {
   // Create a new instance of your nlp
   //  (use a SmartPtr, not raw)
-  SmartPtr<TNLP> mynlp = new Traj_NLP("test");
+  // SmartPtr<TNLP> mynlp = new Traj_NLP("test");
+	//N is the dimension of x
+	const unsigned N = 4;
+	const unsigned  M = 2;
+	const int nnzj = hs071::nnzj;
+	std::vector<int> iRow = hs071::iRow;
+	std::vector<int> jCol = hs071::jCol;
+
+	assert(nnzj == iRow.size());
+	std::array<double, N> x_l;
+	x_l.fill(1);
+	// std::fill_n(x_l, N, 1);
+
+	std::array<double, N> x_u;
+	x_u.fill(5);
+	// std::fill_n(x_u, N, 5);
+
+	std::array<double, N> x_init = {{1.0, 5.0, 5.0, 1.0}};
+
+	std::array<double, M> g_l, g_u;
+	g_l[0] = 25; g_l[1] = 40; 
+	g_u[0] = 2e19; g_u[1] = 40;
+
+	traj_opt::Eval_F_Func eval_f = hs071::eval_f;
+	traj_opt::Eval_Grad_F_Func eval_grad_f = hs071::eval_grad_f;
+	traj_opt::Eval_G_Func eval_g = hs071::eval_g;
+	traj_opt::Eval_Jac_G_Func eval_jac_g = hs071::eval_jac_g;
+
+	SmartPtr<TNLP> mynlp =
+		new traj_opt::Traj_NLP<N, M>(nnzj, iRow, jCol, x_l, x_u, x_init,
+				g_l, g_u, eval_f, eval_grad_f, eval_g, eval_jac_g);
 
   // Create a new instance of IpoptApplication
   //  (use a SmartPtr, not raw)

@@ -1,22 +1,27 @@
 //Tao Gao at UCLA
 #pragma once
 
+#include <functional>
 #include "IpTNLP.hpp"
 #include <array>
-#include <algorithm>  // std::copy
+#include <vector>
+#include <algorithm>  
 #include <cassert>
+#include <iostream>
 
+
+namespace traj_opt{
 using namespace Ipopt;
 
 // template <unsigned int N>
-using Eval_F_Func = double (*)(const Number*);
+using Eval_F_Func = std::function<double(const double*)>;
 
-using Eval_Grad_F_Func = double* (*)(const Number*);
+using Eval_Grad_F_Func = std::function<const std::vector<double> (const double*)>;;
 
-using Eval_G_Func = double* (*)(const double*); 
+using Eval_G_Func = std::function<const std::vector<double> (const double*)>; 
 
 //cannot determine the size of the non-zero at compile time;  
-using Eval_Jac_G_Func = double* (*)(const double*); 
+using Eval_Jac_G_Func = std::function <const std::vector<double> (const double*)>; 
 
 //N is the size of the traj, M is the number of the constriants
 template <unsigned int N, unsigned int M >
@@ -27,10 +32,11 @@ public:
   Traj_NLP(const Index _nnzj,
 					 const std::vector<Index>& _jRow,
 					 const std::vector<Index>& _jCol,
-					 const std::array<Number, N> _xl,
-					 const std::array<Number, N> _xu,
-					 const std::array<Number, M> _gl,
-					 const std::array<Number, M> _gu,
+					 const std::array<Number, N>& _xl,
+					 const std::array<Number, N>& _xu,
+					 const std::array<Number, N>& _x_init,
+					 const std::array<Number, M>& _gl,
+					 const std::array<Number, M>& _gu,
 					 Eval_F_Func _eval_f_func,
 					 Eval_Grad_F_Func _eval_grad_f_func,
 					 Eval_G_Func _eval_g_func,
@@ -40,6 +46,7 @@ public:
 				jacCol(_jCol),
 				xl(_xl),
 				xu(_xu),
+				x_init(_x_init),
 				gl(_gl),
 				gu(_gu),
 				eval_f_func(_eval_f_func),
@@ -47,11 +54,17 @@ public:
 				eval_g_func(_eval_g_func),
 				eval_jac_g_func(_eval_jac_g_func)
 	{
-		assert(nnzj == jRow.size() == jcol.size());
+		assert(nnzj == jacRow.size());
+		assert(nnzj == jacCol.size());
+		std::cout << x_init.size() << std::endl;
+		std::cout << eval_f_func(x_init.data()) << std::endl;
+		std::cout << eval_grad_f_func(x_init.data()).size() << std::endl;
+		std::cout << eval_g_func(x_init.data()).size() << std::endl;
+		std::cout << eval_jac_g_func(x_init.data()).size() << std::endl;
 	};
 
   /** default destructor */
-  virtual ~Traj_NLP();
+  ~Traj_NLP(){};
 
   /**@name Overloaded from TNLP */
   //@{
@@ -76,6 +89,7 @@ public:
 		// use the C style indexing (0-based)
 		index_style = TNLP::C_STYLE;
 
+
 		return true;
 	
 	};
@@ -83,11 +97,16 @@ public:
   /** Method to return the bounds for my problem */
   bool get_bounds_info(Index n, Number* x_l, Number* x_u,
                                Index m, Number* g_l, Number* g_u){
+		assert (n == N);
+		assert (m == M);
+		assert (n == xl.size());
 
-		x_l = xl.data();
-		x_u = xu.data();
-		g_l = gl.data();
-		g_u = gu.data();
+		std::copy(xl.begin(), xl.end(), x_l);
+		std::copy(xu.begin(), xu.end(), x_u);
+		std::copy(gl.begin(), gl.end(), g_l);
+		std::copy(gu.begin(), gu.end(), g_u);
+
+		std::cout << "I reached the bound info" << std::endl;
 		return true;
 	}
 
@@ -104,8 +123,7 @@ public:
   assert(init_z == false);
   assert(init_lambda == false);
 
-	x = x_init.data();
-
+	std::copy(x_init.begin(), x_init.end(), x);
   return true;
 	}
 
@@ -117,13 +135,15 @@ public:
 
   /** Method to return the gradient of the objective */
   bool eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f){
-		grad_f =  eval_grad_f_func(x);
+		auto result = eval_grad_f_func(x);
+		std::copy(result.begin(), result.end(), grad_f);
 		return true;
 	}
 
   /** Method to return the constraint residuals */
   bool eval_g(Index n, const Number* x, bool new_x, Index m, Number* g){
-		g = eval_g_func(x);
+		auto result = eval_g_func(x);
+		std::copy(result.begin(), result.end(), g);
 		return true;
 	}
 
@@ -136,13 +156,13 @@ public:
                           Number* values){
 
 		if (values == NULL) {
-			iRow = jacRow.data() ;
-			jCol = jacCol.data() ;
+			std::copy(jacRow.begin(), jacRow.end(), iRow);
+			std::copy(jacCol.begin(), jacCol.end(), jCol);
 		}
 		else{
-			values = eval_jac_g_func(x);
+			auto result = eval_jac_g_func(x);
+			std::copy(result.begin(), result.end(), values);
 		}
-
 		return true;
 	 }
 
@@ -160,12 +180,40 @@ public:
   /** @name Solution Methods */
   //@{
   /** This method is called when the algorithm is complete so the TNLP can store/write the solution */
-  virtual void finalize_solution(SolverReturn status,
+  void finalize_solution(SolverReturn status,
                                  Index n, const Number* x, const Number* z_L, const Number* z_U,
                                  Index m, const Number* g, const Number* lambda,
                                  Number obj_value,
 				 const IpoptData* ip_data,
-				 IpoptCalculatedQuantities* ip_cq);
+				 IpoptCalculatedQuantities* ip_cq)
+	{
+	
+  // here is where we would store the solution to variables, or write to a file, etc
+  // so we could use the solution.
+
+  // For this example, we write the solution to the console
+  std::cout << std::endl << std::endl << "Solution of the primal variables, x" << std::endl;
+  for (Index i=0; i<n; i++) {
+     std::cout << "x[" << i << "] = " << x[i] << std::endl;
+  }
+
+  std::cout << std::endl << std::endl << "Solution of the bound multipliers, z_L and z_U" << std::endl;
+  for (Index i=0; i<n; i++) {
+    std::cout << "z_L[" << i << "] = " << z_L[i] << std::endl;
+  }
+  for (Index i=0; i<n; i++) {
+    std::cout << "z_U[" << i << "] = " << z_U[i] << std::endl;
+  }
+
+  std::cout << std::endl << std::endl << "Objective value" << std::endl;
+  std::cout << "f(x*) = " << obj_value << std::endl;
+
+  std::cout << std::endl << "Final value of the constraints:" << std::endl;
+  for (Index i=0; i<m ;i++) {
+    std::cout << "g(" << i << ") = " << g[i] << std::endl;
+  }
+	
+	};
   //@}
 
 private:
@@ -202,4 +250,4 @@ private:
   Traj_NLP(const Traj_NLP&);
   Traj_NLP& operator=(const Traj_NLP&);
 };
-
+}

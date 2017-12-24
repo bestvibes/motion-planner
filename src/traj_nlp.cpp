@@ -95,6 +95,8 @@ bool Traj_NLP::get_starting_point(Index n, bool init_x, Number* x,
   x[2] = 5.0;
   x[3] = 1.0;
 
+	std::cout << "I got starting point" << std::endl;
+
   return true;
 }
 

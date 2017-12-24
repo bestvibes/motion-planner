@@ -21,7 +21,7 @@ target_link_libraries(derivative ${MUJOCO_LIB} ${MUJOCO_EXTERN_LIBS})
 
 
 # add_executable(block_opt block_opt_main.hpp block_nlp.cpp)
-add_executable(traj_opt traj_opt_main.cpp traj_nlp.cpp)
+add_executable(traj_opt traj_opt_main.cpp)
 target_include_directories(traj_opt PUBLIC ${Ipopt_INCLUDE_DIR})
 target_link_libraries(traj_opt PUBLIC ${Ipopt_LIB} ${Ipopt_THIRDPARTY_LIBS})
 
