@@ -11,6 +11,12 @@ if (NOT MUJOCO_FOUND)
 	message(FATAL_ERROR "Failed to find mujoco at " ${MUJOCO_ROOT_DIR})
 endif()
 
+find_package(Eigen3 REQUIRED)
+message(STATUS ${EIGEN3_INCLUDE_DIR})
+# message(STATUS "eigen path is : $ENV{EIGEN3_INCLUDE_DIR}")
+# INCLUDE_DIRECTORIES ( "$ENV{EIGEN3_INCLUDE_DIR}" )
+
+
 add_executable(simulate basic.cpp)
 target_include_directories(simulate PUBLIC ${MUJOCO_INCLUDE_DIR})
 target_link_libraries(simulate ${MUJOCO_LIB} ${MUJOCO_EXTERN_LIBS})
