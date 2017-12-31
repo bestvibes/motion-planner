@@ -26,12 +26,12 @@ target_include_directories(derivative PUBLIC ${MUJOCO_INCLUDE_DIR})
 target_link_libraries(derivative ${MUJOCO_LIB} ${MUJOCO_EXTERN_LIBS})
 
 
-# add_executable(block_opt block_opt_main.hpp block_nlp.cpp)
-add_executable(traj_opt traj_opt_main.cpp)
-target_include_directories(traj_opt PUBLIC ${Ipopt_INCLUDE_DIR})
-target_link_libraries(traj_opt PUBLIC ${Ipopt_LIB} ${Ipopt_THIRDPARTY_LIBS})
-
-# add_executable(hs071_nlp hs071_main.cpp hs071_nlp.cpp)
-# target_include_directories(hs071_nlp PUBLIC ${Ipopt_INCLUDE_DIR})
-# target_link_libraries(hs071_nlp PUBLIC ${Ipopt_LIB} ${Ipopt_THIRDPARTY_LIBS})
+# add_executable(traj_opt traj_opt_main.cpp)
+# target_include_directories(traj_opt PUBLIC ${Ipopt_INCLUDE_DIR})
+# target_link_libraries(traj_opt PUBLIC ${Ipopt_LIB} ${Ipopt_THIRDPARTY_LIBS})
 #
+add_executable(test_eigen test_eigen.cpp)
+target_include_directories(test_eigen PUBLIC ${Ipopt_INCLUDE_DIR}
+	${EIGEN3_INCLUDE_DIR})
+target_link_libraries(test_eigen PUBLIC ${Ipopt_LIB} ${Ipopt_THIRDPARTY_LIBS})
+
