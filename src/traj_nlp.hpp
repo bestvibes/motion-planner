@@ -8,23 +8,34 @@
 #include <algorithm>  
 #include <cassert>
 #include <iostream>
+#include <Eigen/Dense>
 
 
 namespace traj_opt{
 using namespace Ipopt;
 
-// template <unsigned int N>
-using Eval_F_Func = std::function<double(const double*)>;
+template <unsigned N>
+using Array = std::array<double, N>;
+template <unsigned N>
+using Point = Eigen::Array<double, 1, N, Eigen::RowMajor>;
 
-using Eval_Grad_F_Func = std::function<const std::vector<double> (const double*)>;;
+//N is the size of the trajectory
+template <unsigned N>
+using Eval_F_Func = std::function<double(const Array<N>&)>;
 
-using Eval_G_Func = std::function<const std::vector<double> (const double*)>; 
+template<unsigned N>
+using Eval_Grad_F_Func = std::function<const Array<N> (const Array<N>&)>;;
+
+//N is the size of the trajectory; M is the number of constriants; 
+template <unsigned N, unsigned M>
+using Eval_G_Func = std::function<const Array<M> (const Array<N>&)>; 
 
 //cannot determine the size of the non-zero at compile time;  
-using Eval_Jac_G_Func = std::function <const std::vector<double> (const double*)>; 
+template <unsigned N>
+using Eval_Jac_G_Func = std::function <const std::vector<double> (const Array<N>&)>; 
 
 //N is the size of the traj, M is the number of the constriants
-template <unsigned int N, unsigned int M >
+template <unsigned N, unsigned M >
 class Traj_NLP : public TNLP
 {
 public:
@@ -37,10 +48,10 @@ public:
 					 const std::array<Number, N>& _x_init,
 					 const std::array<Number, M>& _gl,
 					 const std::array<Number, M>& _gu,
-					 Eval_F_Func _eval_f_func,
-					 Eval_Grad_F_Func _eval_grad_f_func,
-					 Eval_G_Func _eval_g_func,
-					 Eval_Jac_G_Func _eval_jac_g_func ):
+					 Eval_F_Func<N> _eval_f_func,
+					 Eval_Grad_F_Func<N> _eval_grad_f_func,
+					 Eval_G_Func<N, M> _eval_g_func,
+					 Eval_Jac_G_Func<N> _eval_jac_g_func ):
 				nnzj(_nnzj),
 				jacRow(_jRow),
 				jacCol(_jCol),
@@ -56,11 +67,11 @@ public:
 	{
 		assert(nnzj == jacRow.size());
 		assert(nnzj == jacCol.size());
-		std::cout << x_init.size() << std::endl;
-		std::cout << eval_f_func(x_init.data()) << std::endl;
-		std::cout << eval_grad_f_func(x_init.data()).size() << std::endl;
-		std::cout << eval_g_func(x_init.data()).size() << std::endl;
-		std::cout << eval_jac_g_func(x_init.data()).size() << std::endl;
+		// std::cout << x_init.size() << std::endl;
+		// std::cout << eval_f_func(x_init.data()) << std::endl;
+		// std::cout << eval_grad_f_func(x_init.data()).size() << std::endl;
+		// std::cout << eval_g_func(x_init.data()).size() << std::endl;
+		// std::cout << eval_jac_g_func(x_init.data()).size() << std::endl;
 	};
 
   /** default destructor */
@@ -123,26 +134,32 @@ public:
   assert(init_z == false);
   assert(init_lambda == false);
 
-	std::copy(x_init.begin(), x_init.end(), x);
+	// std::copy(x_init.begin(), x_init.end(), x);
   return true;
 	}
 
   /** Method to return the objective value */
-  bool eval_f(Index n, const Number* x, bool new_x, Number& obj_value){
-		obj_value = eval_f_func(x);
+  bool eval_f(Index n, const double* x, bool new_x, Number& obj_value){
+		Array<N> x_arr;
+		std::copy(x, x+N, x_arr.begin());
+		obj_value = eval_f_func(x_arr);
 		return true;
 	}
 
   /** Method to return the gradient of the objective */
   bool eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f){
-		auto result = eval_grad_f_func(x);
+		Array<N> x_arr;
+		std::copy(x, x+N, x_arr.begin());
+		auto result = eval_grad_f_func(x_arr);
 		std::copy(result.begin(), result.end(), grad_f);
 		return true;
 	}
 
   /** Method to return the constraint residuals */
   bool eval_g(Index n, const Number* x, bool new_x, Index m, Number* g){
-		auto result = eval_g_func(x);
+		Array<N> x_arr;
+		std::copy(x, x+N, x_arr.begin());
+		auto result = eval_g_func(x_arr);
 		std::copy(result.begin(), result.end(), g);
 		return true;
 	}
@@ -160,7 +177,9 @@ public:
 			std::copy(jacCol.begin(), jacCol.end(), jCol);
 		}
 		else{
-			auto result = eval_jac_g_func(x);
+			Array<N> x_arr;
+			std::copy(x, x+N, x_arr.begin());
+			auto result = eval_jac_g_func(x_arr);
 			std::copy(result.begin(), result.end(), values);
 		}
 		return true;
@@ -235,17 +254,17 @@ private:
   //@}
 	const int nnzj;
 	// const int nnzh;
-	const std::vector<Index>& jacRow; 
-	const std::vector<Index>& jacCol; 
+	const std::vector<int>& jacRow; 
+	const std::vector<int>& jacCol; 
 	const std::array<double, N>& xl; 
 	const std::array<double, N>& xu; 
 	const std::array<double, N>& x_init;
 	const std::array<double, M>& gl;
 	const std::array<double, M>& gu;
-	Eval_F_Func eval_f_func;
-	Eval_Grad_F_Func eval_grad_f_func;
-	Eval_G_Func eval_g_func;
-	Eval_Jac_G_Func eval_jac_g_func;
+	Eval_F_Func<N> eval_f_func;
+	Eval_Grad_F_Func<N> eval_grad_f_func;
+	Eval_G_Func<N, M> eval_g_func;
+	Eval_Jac_G_Func<N> eval_jac_g_func;
 
   Traj_NLP(const Traj_NLP&);
   Traj_NLP& operator=(const Traj_NLP&);
