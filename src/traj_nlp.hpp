@@ -9,7 +9,7 @@
 #include <cassert>
 #include <iostream>
 #include <Eigen/Dense>
-
+#include "utilities.hpp"
 
 namespace traj_opt{
 using namespace Ipopt;

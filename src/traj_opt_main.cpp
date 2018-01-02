@@ -3,8 +3,6 @@
 // This code is published under the Eclipse Public License.
 //
 // $Id: block_main.cpp 2398 2013-10-19 18:08:59Z stefan $
-//
-// Authors:  Carl Laird, Andreas Waechter     IBM    2005-08-10
 
 #include "IpIpoptApplication.hpp"
 #include "traj_nlp.hpp"

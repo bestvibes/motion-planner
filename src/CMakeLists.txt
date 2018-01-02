@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 # set (MUJOCO_DIR "/home/tao/.mujoco/mjpro150")
 set (MUJOCO_ROOT_DIR "/home/tao/.mujoco/mjpro150")
