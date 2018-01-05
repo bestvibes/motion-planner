@@ -8,36 +8,42 @@
 #include <algorithm>  
 #include <cassert>
 #include <iostream>
-#include <Eigen/Dense>
 #include "utilities.hpp"
 
 namespace traj_opt{
 using namespace Ipopt;
 
-template <unsigned N>
-using Array = std::array<double, N>;
-template <unsigned N>
-using Point = Eigen::Array<double, 1, N, Eigen::RowMajor>;
-
-//N is the size of the trajectory
-template <unsigned N>
-using Eval_F_Func = std::function<double(const Array<N>&)>;
+using Eval_F_Func = std::function<double(const double*)>;
 
 template<unsigned N>
-using Eval_Grad_F_Func = std::function<const Array<N> (const Array<N>&)>;;
+using Eval_Grad_F_Func = std::function<const Array<N> (const double*)>;;
 
 //N is the size of the trajectory; M is the number of constriants; 
-template <unsigned N, unsigned M>
-using Eval_G_Func = std::function<const Array<M> (const Array<N>&)>; 
+template <unsigned M>
+using Eval_G_Func = std::function<const Array<M> (const double*)>; 
 
 //cannot determine the size of the non-zero at compile time;  
-template <unsigned N>
-using Eval_Jac_G_Func = std::function <const std::vector<double> (const Array<N>&)>; 
+using Eval_Jac_G_Func = std::function <const std::vector<double> (const double*)>; 
 
 //N is the size of the traj, M is the number of the constriants
 template <unsigned N, unsigned M >
 class Traj_NLP : public TNLP
 {
+
+	const int nnzj;
+	// const int nnzh;
+	const std::vector<int>& jacRow; 
+	const std::vector<int>& jacCol; 
+	const std::array<double, N>& xl; 
+	const std::array<double, N>& xu; 
+	const std::array<double, N>& x_init;
+	const std::array<double, M>& gl;
+	const std::array<double, M>& gu;
+	Eval_F_Func eval_f_func;
+	Eval_Grad_F_Func<N> eval_grad_f_func;
+	Eval_G_Func<M> eval_g_func;
+	Eval_Jac_G_Func eval_jac_g_func;
+
 public:
   /** default constructor */
   Traj_NLP(const Index _nnzj,
@@ -48,10 +54,10 @@ public:
 					 const std::array<Number, N>& _x_init,
 					 const std::array<Number, M>& _gl,
 					 const std::array<Number, M>& _gu,
-					 Eval_F_Func<N> _eval_f_func,
+					 Eval_F_Func _eval_f_func,
 					 Eval_Grad_F_Func<N> _eval_grad_f_func,
-					 Eval_G_Func<N, M> _eval_g_func,
-					 Eval_Jac_G_Func<N> _eval_jac_g_func ):
+					 Eval_G_Func<M> _eval_g_func,
+					 Eval_Jac_G_Func _eval_jac_g_func ):
 				nnzj(_nnzj),
 				jacRow(_jRow),
 				jacCol(_jCol),
@@ -140,26 +146,20 @@ public:
 
   /** Method to return the objective value */
   bool eval_f(Index n, const double* x, bool new_x, Number& obj_value){
-		Array<N> x_arr;
-		std::copy(x, x+N, x_arr.begin());
-		obj_value = eval_f_func(x_arr);
+		obj_value = eval_f_func(x);
 		return true;
 	}
 
   /** Method to return the gradient of the objective */
   bool eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f){
-		Array<N> x_arr;
-		std::copy(x, x+N, x_arr.begin());
-		auto result = eval_grad_f_func(x_arr);
+		auto result = eval_grad_f_func(x);
 		std::copy(result.begin(), result.end(), grad_f);
 		return true;
 	}
 
   /** Method to return the constraint residuals */
   bool eval_g(Index n, const Number* x, bool new_x, Index m, Number* g){
-		Array<N> x_arr;
-		std::copy(x, x+N, x_arr.begin());
-		auto result = eval_g_func(x_arr);
+		auto result = eval_g_func(x);
 		std::copy(result.begin(), result.end(), g);
 		return true;
 	}
@@ -177,9 +177,7 @@ public:
 			std::copy(jacCol.begin(), jacCol.end(), jCol);
 		}
 		else{
-			Array<N> x_arr;
-			std::copy(x, x+N, x_arr.begin());
-			auto result = eval_jac_g_func(x_arr);
+			auto result = eval_jac_g_func(x);
 			std::copy(result.begin(), result.end(), values);
 		}
 		return true;
@@ -252,19 +250,6 @@ private:
 	// const int xdim; 
 	// const int gdim;
   //@}
-	const int nnzj;
-	// const int nnzh;
-	const std::vector<int>& jacRow; 
-	const std::vector<int>& jacCol; 
-	const std::array<double, N>& xl; 
-	const std::array<double, N>& xu; 
-	const std::array<double, N>& x_init;
-	const std::array<double, M>& gl;
-	const std::array<double, M>& gu;
-	Eval_F_Func<N> eval_f_func;
-	Eval_Grad_F_Func<N> eval_grad_f_func;
-	Eval_G_Func<N, M> eval_g_func;
-	Eval_Jac_G_Func<N> eval_jac_g_func;
 
   Traj_NLP(const Traj_NLP&);
   Traj_NLP& operator=(const Traj_NLP&);

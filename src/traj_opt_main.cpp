@@ -40,10 +40,10 @@ int main(int argv, char* argc[])
 	g_l[0] = 25; g_l[1] = 40; 
 	g_u[0] = 2e19; g_u[1] = 40;
 
-	traj_opt::Eval_F_Func<N> eval_f = hs071::eval_f;
-	traj_opt::Eval_Grad_F_Func<N> eval_grad_f = hs071::eval_grad_f;
-	traj_opt::Eval_G_Func<N, M> eval_g = hs071::eval_g;
-	traj_opt::Eval_Jac_G_Func<N> eval_jac_g = hs071::eval_jac_g;
+	auto eval_f = hs071::eval_f;
+	auto eval_grad_f = hs071::eval_grad_f;
+	auto eval_g = hs071::eval_g;
+	auto eval_jac_g = hs071::eval_jac_g;
 
 	SmartPtr<TNLP> mynlp =
 		new traj_opt::Traj_NLP<N, M>(nnzj, iRow, jCol, x_l, x_u, x_init,

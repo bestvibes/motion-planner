@@ -69,6 +69,8 @@ get_python_inc(),
 '/usr/local/include/coin/ThirdParty',
 '-isystem',
 '/usr/local/include/eigen3',
+'-isystem',
+'/home/tao/src/range-v3/include',
 ]
 
 # Clang automatically sets the '-std=' flag to 'c++14' for MSVC 2015 or later,

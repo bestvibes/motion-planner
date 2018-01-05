@@ -18,38 +18,46 @@
 #pragma once
 #include <iostream>
 #include <array>
+#include <tuple>
+#include <Eigen/Dense>
 
 namespace traj_opt{
 
 	template<unsigned N>
 	using Array = std::array<double, N>;
-	// template<unsigned N, unsigned P>
-	// using Traj = std::array<Point<P>, N>;
 
-	// template<unsigned N, unsigned P>
-	// Traj<N, P> double_to_traj(const double* x_c){
-	// 	double* x = const_cast<double*>(x_c) ;
-	// 	Traj<N, P> traj;
-	// 	for (size_t r=0;r<N;r++){
-	// 			auto start = x+r*P;
-	// 			std::copy(start, start+P, std::begin(traj[r]));
-	// 	}
-	// 	return traj;
-	// 	}
-	template<unsigned N>
-	Array<N> double_to_array(const double* x){
-		Array<N> traj;
-		std::copy(x, x+N, std::begin(traj));
-		return traj;
-		}
-
+// using Point = std::valarray<const double>;
 	template<unsigned N, unsigned P>
-		Array<P> get_traj_point(Array<N*P> traj, const int n){
+	using Traj = Eigen::Array<double, N, P, Eigen::RowMajor>;
+
+	// template<unsigned P>
+	// using Point = Eigen::Array<double, 1, P, Eigen::RowMajor>;
+
+	template<unsigned P>
+		Array<P> get_traj_point(const double* traj, const int n){
 			const int start = n*P;
-			auto begin = std::begin(traj);
-			Array<P> point(begin+start, begin+start+P); 
+			Array<P> point(traj+start, traj+start+P); 
 			return point;
 		}
+
+
+	template<unsigned NQ, unsigned NV, unsigned NU>
+		std::tuple<Array<NQ>, Array<NV>, Array<NU>>
+		get_q_v_u(const double*x, const int t){
+			constexpr auto P = NQ+NV+NU; 
+			Array<NQ> q_arr;
+			Array<NV> v_arr;
+			Array<NU> u_arr;
+			auto q_start = x+t*P;
+			auto q_end = q_start+NQ;
+			auto v_end = q_end+NV;
+			auto u_end = v_end + NU;
+			std::copy(q_start, q_end, std::begin(q_arr));
+			std::copy(q_end, v_end, std::begin(v_arr));
+			std::copy(v_end, u_end, std::begin(u_arr));
+			return {q_arr, v_arr, u_arr};
+		}
+
 }
 
 

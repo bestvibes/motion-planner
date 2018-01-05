@@ -4,6 +4,7 @@ set(CMAKE_CXX_STANDARD 17)
 # set (MUJOCO_DIR "/home/tao/.mujoco/mjpro150")
 set (MUJOCO_ROOT_DIR "/home/tao/.mujoco/mjpro150")
 set (Ipopt_ROOT_DIR "/usr/local")
+set (Range3_INCLUDE_DIR "/home/tao/src/range-v3/include")
 include(FindMujoco.cmake)
 include(FindIpopt.cmake)
 
@@ -33,6 +34,6 @@ target_link_libraries(traj_opt PUBLIC ${Ipopt_LIB} ${Ipopt_THIRDPARTY_LIBS})
 #
 add_executable(test_eigen test_eigen.cpp)
 target_include_directories(test_eigen PUBLIC ${Ipopt_INCLUDE_DIR}
-	${EIGEN3_INCLUDE_DIR})
+	${EIGEN3_INCLUDE_DIR} ${Range3_INCLUDE_DIR})
 target_link_libraries(test_eigen PUBLIC ${Ipopt_LIB} ${Ipopt_THIRDPARTY_LIBS})
 
