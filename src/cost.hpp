@@ -17,10 +17,11 @@
  */
 #include <iostream>
 #include <string>
-#include <Eigen/Dense>
+#include <cmath>
 #include <exception>
 #include <vector>
 #include <numeric>
+#include <range/v3/all.hpp> 
 #include "utilities.hpp"
 
 #pragma once
@@ -35,19 +36,25 @@ class Control_Cost{
 		const int qd;
 		const int vd;
 		const int ud;
+		int qvd;
 
 	public:
 		Control_Cost(const int qd, const int vd, const int ud):
 			qd(qd), vd(vd), ud(ud){
 				assert (P == qd+vd+ud);
+				qvd = qd+vd;
 		}
 
 	double operator()(const double* X) const {
-		double* X_1d =  const_cast<double*>(X) ;
-		Eigen::Map<Traj<N, P>> x_arr(X_1d, N, P);
-		auto U = x_arr.block(0, qd+vd, N, ud);
-		auto U2 = U.pow(2);
-		double f = U2.sum();
+		std::vector<double> x_vec(X, X+N*P);
+		auto line_func = [=](auto line) {
+			return line | ranges::view::slice(qvd, qvd+ud) // get u
+								  | ranges::view::transform([](auto u){return std::pow(u, 2);}); //square
+		};
+		auto x_arr_rng = x_vec | ranges::view::chunk(P); 
+		auto u_rng = x_arr_rng|ranges::view::transform(line_func)
+													|ranges::view::join;
+		double f = ranges::accumulate(u_rng, 0);
 		return f;
 	}
 };
@@ -62,13 +69,9 @@ class Sum_Cost{
 			}
 
 	double operator()(const double* x){
-		std::vector<double> costs(num_func);
-		std::transform(std::begin(cost_funcs),
-									 std::end(cost_funcs),
-									 std::begin(costs),
-									 [x](auto f){return f(x);});
-
-		auto total = std::accumulate(std::begin(costs), std::end(costs), 0);
+		double total = ranges::accumulate(
+							cost_funcs | ranges::view::transform([x](auto f){return f(x);}),
+							0);
 		return total;
 	}
 };

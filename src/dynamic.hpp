@@ -19,14 +19,12 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <Eigen/Dense>
+#include "utilities.hpp"
 
 
 namespace traj_opt{
 namespace dynamics{
-	//maybe define it at a top level namespace ? 
-	using Point =  std::vector<const double>;
-
+	template <unsigned NQ, unsigned NV, unsigned NU>
 	class Block{
 		public:
 			Block(const int _qd, const int _vd, const int _ud):

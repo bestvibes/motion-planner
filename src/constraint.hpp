@@ -32,7 +32,6 @@ namespace traj_opt::constraint{
 			int end;
 		public:
 			Goal_Constraint(const Array<P>& goal, const int t): goal(goal), t(t){
-				//this is the range of the point in x
 				start = t*P;
 				end = start + P;
 			}
@@ -64,30 +63,23 @@ namespace traj_opt::constraint{
 				auto const & [q0_arr, v0_arr, u0_arr] = get_q_v_u<NQ, NV, NU>(x, t);
 				auto const & [q1_arr, v1_arr, u1_arr] = get_q_v_u<NQ, NV, NU>(x, t+1);
 
-				auto acc0 = dynamics(q0_arr, v0_arr, u0_arr);
-				auto acc1 = dynamics(q1_arr, v1_arr, u1_arr);
+				auto qv0_rng = ranges::view::concat(q0_arr, v0_arr);
+				auto qv1_rng = ranges::view::concat(q1_arr, v1_arr);
 
-				// Array<NQ+NV> qv0_arr(q0_arr + v0_arr);
-				// Array<NQ+NV> qv1_arr(q1_arr + v1_arr);
+				auto d0_rng = ranges::view::concat(v0_arr, dynamics(q0_arr, v0_arr, u0_arr));
+				auto d1_rng = ranges::view::concat(v1_arr, dynamics(q1_arr, v1_arr, u1_arr));
 
 				auto grad_func = [=](auto qv0, auto qv1, auto d0, auto d1){
 					return qv1 - qv0 - 0.5*dt*(d0+d1);
 				};
 
-				auto error = ranges::view::zip_with(grad_func, q0_arr, 
-
-				// auto grad  = [dt](auto qv0, auto qv1, auto ) 
-
-
-				// Array<NQ+NV> error = range::view::zip_with_fn([dt](auto qv0, auto qv1, auto d0, auto d1)
-
-				// ranges::view::zip_with([](auto qv-))
-				// Point d0, d1;
-				// d0 << v0, acc0;
-				// d1 << v1, acc1; 
+				auto error_rng = ranges::view::zip_with(grad_func, qv0_rng, qv1_rng,
+																						d0_rng, d1_rng);  
+				std::vector<double> error_vec = ranges::yield_from(error_rng);
+				Array<NQ+NV> error;
+				std::copy_n(error_vec.begin(), NQ+NV, std::begin(error));
 				return error;
 			};
-
 	};
   //
 	// class Traj_Dynamic_Constriant{
