@@ -1,13 +1,70 @@
 #pragma once
 #include <functional>
 #include <cmath>
+#include <iterator>
+#include <functional>
 #include <range/v3/all.hpp>
 #include  "utilities.hpp"
 
 namespace trajectoryOptimization::constraint{
+	using namespace ranges;
+	using constraintFunction = std::function<std::vector<double>(const double*)>; 
 
+	template<unsigned numberOfPoints,
+					 unsigned pointDimension, 
+					 unsigned kinematicDimension,
+					 unsigned goalTimeIndex>
+	class GetToKinematicGoalSquare{
+		const std::vector<double>& kinematicGoal;
+		int kinematicStartIndex;
+		int kinematicEndIndex;
+		public:
+		GetToKinematicGoalSquare(const std::vector<double>& kinematicGoal):
+		kinematicGoal(kinematicGoal){
+			kinematicStartIndex = goalTimeIndex * pointDimension;
+		}
+		auto operator()(const double* trajectoryPtr) const{
+			auto differentSquare = [](auto scaler1, auto scaler2)
+																{return std::pow(scaler1-scaler2 ,2);};
+			std::vector<double> currentKinematics;
+			auto currentKinematicsStartPtr = trajectoryPtr+kinematicStartIndex;
+			std::copy_n(currentKinematicsStartPtr,
+									kinematicDimension,
+									std::back_inserter(currentKinematics));
 
+			auto toKinematicGoalSquareRange =
+					 view::zip_with(differentSquare, kinematicGoal, currentKinematics);
 
+			std::vector<double> toKinematicGoalSquare =
+													yield_from(toKinematicGoalSquareRange);
+
+			return toKinematicGoalSquare;
+			}
+	
+	};
+
+	class StackConstriants{
+		const std::vector<constraintFunction>& constraintFunctions;
+		public:
+			StackConstriants(const std::vector<constraintFunction>& constraintFunctions):
+				constraintFunctions(constraintFunctions){};
+
+			std::vector<double> operator()(const double* trajectoryPtr){
+				std::vector<double> stackedConstriants;
+
+				for (auto aFunction: constraintFunctions){
+					auto constraints = aFunction(trajectoryPtr);
+					std::copy(std::begin(constraints), std::end(constraints),
+										std::back_inserter(stackedConstriants));
+				}
+			// auto applySingleFunction = [=](auto aFunction){return aFunction(trajectoryPtr);};
+      //
+			// auto constraintsRanges = constraintFunctions | view::transform(applySingleFunction)
+			// 																						 | view::join;
+			// std::vector<double> stackedConstriants = yield_from(view::concat(constraintsRanges));
+			return stackedConstriants;
+		}
+	};
 }
 // 	template <unsigned NQ, unsigned NV, unsigned NU>
 // 	using Dynamic_Func = std::function<Array<NQ+NV>(Array<NQ>, Array<NV>, Array<NU>)>;

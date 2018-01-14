@@ -23,7 +23,7 @@ TEST(costTest, controlSquare_isZero_whenControlsAreAllZero) {
 }
 
 
-TEST(costTest, controlSquare_IsTwelve_WhenContorlsAreThreeTwo) { 
+TEST(costTest, controlSquareIsTwelveWhenContorlsAreThreeTwo) { 
 	using namespace ranges;
 	const unsigned numberOfPoints = 3;    
 	const unsigned pointDimension = 3;  
@@ -44,7 +44,7 @@ TEST(costTest, controlSquare_IsTwelve_WhenContorlsAreThreeTwo) {
 	EXPECT_EQ(12, getControlSquareSum(trajectoryWithControlTwo_rawDouble));
 }
 
-TEST(costTest, controlSquare_Is24_WhenContorlsAreThreeTwoTwo) { 
+TEST(costTest, controlSquareIs24WhenContorlsAreThreeTwoTwo) { 
 	using namespace ranges;
 	const unsigned numberOfPoints = 3;    
 	const unsigned pointDimension = 4;  
