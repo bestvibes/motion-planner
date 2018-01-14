@@ -1,13 +1,13 @@
 #include <array>
 #include <cassert>
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 #include "cost.hpp"
-// #include <range/v3/all.hpp> 
-#include <range/v3/view.hpp> 
+#include "utilities.hpp"
 
 using namespace trajectoryOptimization::cost;
+using namespace trajectoryOptimization::utilities;
 
-TEST(costTest, controlSquare_IsZero_WhenControlsAreAllZero) { 
+TEST(costTest, controlSquare_isZero_whenControlsAreAllZero) { 
 	const unsigned numberOfPoints = 3;    
 	const unsigned pointDimension = 3;  
 	const unsigned controlDimension = 1; 
@@ -29,13 +29,10 @@ TEST(costTest, controlSquare_IsTwelve_WhenContorlsAreThreeTwo) {
 	const unsigned pointDimension = 3;  
 	const unsigned controlDimension = 1; 
 	const auto trajectoryDimension = numberOfPoints * pointDimension;
-	std::array<double, pointDimension> singlePoint = {{0, 0, 2}};
-	auto singlePointWithControlTwo = view::all(singlePoint);
-	auto trajectorWithControlTwo_Range = singlePointWithControlTwo
-																			 | view::cycle
-									           					 | view::take(trajectoryDimension);
-	std::vector<double> trajectoryWithControlTwo
-											= yield_from(trajectorWithControlTwo_Range);
+	std::vector<double> controlTwoPoint = {{0, 0, 2}};
+	auto trajectoryWithControlTwo = createTrajectoryWithIdenticalPoints(
+																	numberOfPoints,
+																	controlTwoPoint); 
 	assert(trajectoryWithControlTwo.size() == trajectoryDimension);
 	const double* trajectoryWithControlTwo_rawDouble
 								= trajectoryWithControlTwo.data();
@@ -47,6 +44,24 @@ TEST(costTest, controlSquare_IsTwelve_WhenContorlsAreThreeTwo) {
 	EXPECT_EQ(12, getControlSquareSum(trajectoryWithControlTwo_rawDouble));
 }
 
+TEST(costTest, controlSquare_Is24_WhenContorlsAreThreeTwoTwo) { 
+	using namespace ranges;
+	const unsigned numberOfPoints = 3;    
+	const unsigned pointDimension = 4;  
+	const unsigned controlDimension = 2; 
+	const auto trajectoryDimension = numberOfPoints * pointDimension;
+	std::vector<double> controlTwoTwo = {{0, 0, 2, 2}};
+	auto trajectoryWithControlTwoTwo = createTrajectoryWithIdenticalPoints(
+																		 numberOfPoints,
+																		 controlTwoTwo);
+	assert(trajectoryWithControlTwoTwo.size() == trajectoryDimension);
+	const double* trajectoryWithControlTwoTwo_ptr
+								= trajectoryWithControlTwoTwo.data();
+	auto getControlSquareSum = GetControlSquareSum<numberOfPoints,
+																										 pointDimension,
+																										 controlDimension>();
+	EXPECT_EQ(24, getControlSquareSum(trajectoryWithControlTwoTwo_ptr));
+}
  
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

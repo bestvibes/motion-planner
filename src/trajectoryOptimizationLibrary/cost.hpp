@@ -1,8 +1,8 @@
+#pragma once
 #include <cmath>
 #include <cassert>
 #include <range/v3/view.hpp> 
 
-#pragma once
 
 namespace trajectoryOptimization::cost{
 
