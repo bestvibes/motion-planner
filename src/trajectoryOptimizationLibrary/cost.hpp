@@ -1,80 +1,46 @@
-/*
- * =====================================================================================
- *
- *       Filename:  cost.cpp
- *
- *    Description:  the cost function of a trajectory
- *
- *        Version:  1.0
- *        Created:  12/24/2017 10:42:04 AM
- *       Revision:  none
- *       Compiler:  gcc
- *
- *         Author:  Tao Gao
- *   Organization:  UCLA
- *
- * =====================================================================================
- */
-#include <iostream>
-#include <string>
 #include <cmath>
-#include <exception>
-#include <vector>
-#include <numeric>
-#include <range/v3/all.hpp> 
-#include "utilities.hpp"
+#include <cassert>
+#include <range/v3/view.hpp> 
 
 #pragma once
 
-namespace traj_opt::cost{
+namespace trajectoryOptimization::cost{
 
+template<unsigned numberOfPoints,
+				 unsigned pointDimension,
+				 unsigned controlDimension>
+	class GetControlSquareSum{
+		unsigned trajectoryDimension; 
+		unsigned controlStartIndex; 
+		unsigned controlEndIndex;
+		public:
+			GetControlSquareSum(){
+				trajectoryDimension = numberOfPoints * pointDimension;
+				assert(controlDimension<pointDimension);
+				controlStartIndex = pointDimension - controlDimension;
+				controlEndIndex = pointDimension;
+			};
+			double operator()(const double* trajectoryPointer) const {
+				using namespace ranges;
+			std::vector<double> trajectory(trajectoryPointer,
+																		 trajectoryPointer+trajectoryDimension);
 
-using Eval_F_Func = std::function<double(const double*)>;
+			auto squareScaler =  [](auto singleControlValue)
+													 {return std::pow(singleControlValue, 2);};
 
-template<unsigned N, unsigned P>
-class Control_Cost{
-		const int qd;
-		const int vd;
-		const int ud;
-		int qvd;
+			auto squareAPoint = [=](auto point) {
+				return point | ranges::view::slice(controlStartIndex, controlEndIndex) // get u
+										 | ranges::view::transform(squareScaler); //square
+			};
 
-	public:
-		Control_Cost(const int qd, const int vd, const int ud):
-			qd(qd), vd(vd), ud(ud){
-				assert (P == qd+vd+ud);
-				qvd = qd+vd;
-		}
-
-	double operator()(const double* X) const {
-		std::vector<double> x_vec(X, X+N*P);
-		auto line_func = [=](auto line) {
-			return line | ranges::view::slice(qvd, qvd+ud) // get u
-								  | ranges::view::transform([](auto u){return std::pow(u, 2);}); //square
-		};
-		auto x_arr_rng = x_vec | ranges::view::chunk(P); 
-		auto u_rng = x_arr_rng|ranges::view::transform(line_func)
-													|ranges::view::join;
-		double f = ranges::accumulate(u_rng, 0);
-		return f;
-	}
-};
-
-class Sum_Cost{
-	const std::vector<Eval_F_Func>& cost_funcs;
-	size_t num_func;
-	public:
-		Sum_Cost(const std::vector<Eval_F_Func>& cost_funcs):
-			cost_funcs(cost_funcs){
-				num_func = cost_funcs.size();
-			}
-
-	double operator()(const double* x){
-		double total = ranges::accumulate(
-							cost_funcs | ranges::view::transform([x](auto f){return f(x);}),
-							0);
-		return total;
-	}
-};
-
+			auto controlSquare = trajectory | view::chunk(pointDimension)
+																		  | view::transform(squareAPoint)
+																			| view::join;
+			double controlSquareSum = ranges::accumulate(controlSquare, 0);
+			return controlSquareSum;
+			}  
+	};
 }//namespace
+
+
 

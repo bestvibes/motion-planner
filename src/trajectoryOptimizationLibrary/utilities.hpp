@@ -1,20 +1,3 @@
-/*
- * =====================================================================================
- *
- *       Filename:  utilities.hpp
- *
- *    Description:  utility functions for traj optimization
- *
- *        Version:  1.0
- *        Created:  01/01/2018 04:53:36 PM
- *       Revision:  none
- *       Compiler:  gcc
- *
- *         Author:  Tao Gao, 
- *   Organization:  
- *
- * =====================================================================================
- */
 #pragma once
 #include <iostream>
 #include <array>
