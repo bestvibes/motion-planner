@@ -50,18 +50,13 @@ namespace trajectoryOptimization::constraint{
 				constraintFunctions(constraintFunctions){};
 
 			std::vector<double> operator()(const double* trajectoryPtr){
-				std::vector<double> stackedConstriants;
 
+				std::vector<double> stackedConstriants;
 				for (auto aFunction: constraintFunctions){
 					auto constraints = aFunction(trajectoryPtr);
 					std::copy(std::begin(constraints), std::end(constraints),
 										std::back_inserter(stackedConstriants));
 				}
-			// auto applySingleFunction = [=](auto aFunction){return aFunction(trajectoryPtr);};
-      //
-			// auto constraintsRanges = constraintFunctions | view::transform(applySingleFunction)
-			// 																						 | view::join;
-			// std::vector<double> stackedConstriants = yield_from(view::concat(constraintsRanges));
 			return stackedConstriants;
 		}
 	};

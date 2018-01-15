@@ -8,6 +8,7 @@ using namespace trajectoryOptimization::constraint;
 using namespace trajectoryOptimization::utilities;
 using namespace testing;
 using namespace ranges;
+
 TEST(kinematicGoalConstraintTest, ZerosWhenReachingGoal){
 	const unsigned numberOfPoints = 3;    
 	const unsigned pointDimension = 3;  
