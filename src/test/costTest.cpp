@@ -16,9 +16,9 @@ TEST(costTest, controlSquare_isZero_whenControlsAreAllZero) {
 	const double * trajectoryWithZeroControl_RawDouble = trajectoryWithZeroControl.data();
 	trajectoryWithZeroControl.fill(0);
 
-	auto getControlSquareSum = GetControlSquareSum<numberOfPoints,
-																										 pointDimension,
-																										 controlDimension>();
+	auto getControlSquareSum = GetControlSquareSum(numberOfPoints,
+																								 pointDimension,
+																								 controlDimension);
 	EXPECT_EQ(0, getControlSquareSum(trajectoryWithZeroControl_RawDouble));
 }
 
@@ -38,9 +38,9 @@ TEST(costTest, controlSquareIsTwelveWhenContorlsAreThreeTwo) {
 								= trajectoryWithControlTwo.data();
 
 
-	auto getControlSquareSum = GetControlSquareSum<numberOfPoints,
-																										 pointDimension,
-																										 controlDimension>();
+	auto getControlSquareSum = GetControlSquareSum(numberOfPoints,
+																								 pointDimension,
+																								 controlDimension);
 	EXPECT_EQ(12, getControlSquareSum(trajectoryWithControlTwo_rawDouble));
 }
 
@@ -57,9 +57,9 @@ TEST(costTest, controlSquareIs24WhenContorlsAreThreeTwoTwo) {
 	assert(trajectoryWithControlTwoTwo.size() == trajectoryDimension);
 	const double* trajectoryWithControlTwoTwo_ptr
 								= trajectoryWithControlTwoTwo.data();
-	auto getControlSquareSum = GetControlSquareSum<numberOfPoints,
-																										 pointDimension,
-																										 controlDimension>();
+	auto getControlSquareSum = GetControlSquareSum(numberOfPoints,
+																								 pointDimension,
+																								 controlDimension);
 	EXPECT_EQ(24, getControlSquareSum(trajectoryWithControlTwoTwo_ptr));
 }
  

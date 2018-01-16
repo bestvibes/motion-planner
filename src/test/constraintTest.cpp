@@ -21,10 +21,11 @@ TEST(kinematicGoalConstraintTest, ZerosWhenReachingGoal){
 
 	const std::vector<double> kinematicGoal = {1, 1};
 	auto getToKinematicGoalSquare =
-		GetToKinematicGoalSquare<numberOfPoints,
+		GetToKinematicGoalSquare(numberOfPoints,
 														 pointDimension,
 														 kinematicDimension,
-														 goalTimeIndex>(kinematicGoal);
+														 goalTimeIndex,
+														 kinematicGoal);
 
 	auto  toGoalSquares = getToKinematicGoalSquare(trajectoryWithOnesQV_ptr);
 	EXPECT_THAT(toGoalSquares, ElementsAre(0, 0));
@@ -47,10 +48,11 @@ TEST(kinematicGoalConstraintTest, increasingKinematicValues){
 	const double* trajectoryPtr = trajectory.data();
 
 	auto getToKinematicGoalSquare =
-		GetToKinematicGoalSquare<numberOfPoints,
+		GetToKinematicGoalSquare(numberOfPoints,
 														 pointDimension,
 														 kinematicDimension,
-														 goalTimeIndex>(kinematicGoal);
+														 goalTimeIndex,
+														 kinematicGoal);
 
 	auto  toGoalSquares = getToKinematicGoalSquare(trajectoryPtr);
 	EXPECT_THAT(toGoalSquares, ElementsAre(9, 16, 25, 36));
@@ -75,16 +77,19 @@ TEST(stackedConstriantsTest, twoKinmaticGoalConstraints){
 	std::vector<double> kinematicGoalTwo = {{-1, -1, -1, -1}};
 
 	auto getToGoalOneSquare =
-		GetToKinematicGoalSquare<numberOfPoints,
+		GetToKinematicGoalSquare(numberOfPoints,
 														 pointDimension,
 														 kinematicDimension,
-														 goalOneTimeIndex>(kinematicGoalOne);
+														 goalOneTimeIndex,
+														 kinematicGoalOne);
 
 	auto getToGoalTwoSquare =
-		GetToKinematicGoalSquare<numberOfPoints,
+		GetToKinematicGoalSquare(numberOfPoints,
 														 pointDimension,
 														 kinematicDimension,
-														 goalTwoTimeIndex>(kinematicGoalTwo);
+														 goalTwoTimeIndex,
+														 kinematicGoalTwo);
+
 
 	std::vector<constraintFunction> twoGoalConstraintFunctions =
 																	{getToGoalOneSquare, getToGoalTwoSquare};

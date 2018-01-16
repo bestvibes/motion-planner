@@ -10,17 +10,25 @@ namespace trajectoryOptimization::constraint{
 	using namespace ranges;
 	using constraintFunction = std::function<std::vector<double>(const double*)>; 
 
-	template<unsigned numberOfPoints,
-					 unsigned pointDimension, 
-					 unsigned kinematicDimension,
-					 unsigned goalTimeIndex>
 	class GetToKinematicGoalSquare{
+		const unsigned numberOfPoints;
+		const unsigned pointDimension; 
+		const unsigned kinematicDimension;
+		const unsigned goalTimeIndex;
 		const std::vector<double>& kinematicGoal;
 		int kinematicStartIndex;
 		int kinematicEndIndex;
 		public:
-		GetToKinematicGoalSquare(const std::vector<double>& kinematicGoal):
-		kinematicGoal(kinematicGoal){
+		GetToKinematicGoalSquare(const unsigned numberOfPoints, 
+														 const unsigned pointDimension,
+														 const unsigned kinematicDimension,
+														 const unsigned goalTimeIndex, 
+														 const std::vector<double>& kinematicGoal):
+			numberOfPoints(numberOfPoints),
+			pointDimension(pointDimension),
+			kinematicDimension(kinematicDimension),
+			goalTimeIndex(goalTimeIndex),
+			kinematicGoal(kinematicGoal){
 			kinematicStartIndex = goalTimeIndex * pointDimension;
 		}
 		auto operator()(const double* trajectoryPtr) const{

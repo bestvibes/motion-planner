@@ -6,15 +6,21 @@
 
 namespace trajectoryOptimization::cost{
 
-template<unsigned numberOfPoints,
-				 unsigned pointDimension,
-				 unsigned controlDimension>
 	class GetControlSquareSum{
-		unsigned trajectoryDimension; 
-		unsigned controlStartIndex; 
-		unsigned controlEndIndex;
+		const unsigned numberOfPoints;
+		const unsigned pointDimension;
+		const unsigned controlDimension;
+		int trajectoryDimension; 
+		int controlStartIndex; 
+		int controlEndIndex;
 		public:
-			GetControlSquareSum(){
+			GetControlSquareSum( const unsigned numberOfPoints,
+													 const unsigned pointDimension,
+													 const unsigned controlDimension):
+				numberOfPoints(numberOfPoints),
+				pointDimension(pointDimension),
+				controlDimension(controlDimension)
+		{
 				trajectoryDimension = numberOfPoints * pointDimension;
 				assert(controlDimension<pointDimension);
 				controlStartIndex = pointDimension - controlDimension;
