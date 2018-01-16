@@ -9,17 +9,27 @@ using namespace trajectoryOptimization::utilities;
 using namespace testing;
 using namespace ranges;
 
-TEST(kinematicGoalConstraintTest, ZerosWhenReachingGoal){
-	const unsigned numberOfPoints = 3;    
-	const unsigned pointDimension = 3;  
-	const unsigned kinematicDimension = 2;
-	const unsigned goalTimeIndex = 0; 
-	auto trajectoryWithOnesQV =  createTrajectoryWithIdenticalPoints(
-															 numberOfPoints,
-															 {1, 1, 0});
-	const double* trajectoryWithOnesQV_ptr = trajectoryWithOnesQV.data();
+class kinematicGoalConstraintTest:public::Test{
+	protected:
+		const unsigned numberOfPoints = 2;    
+		const unsigned pointDimension = 6;  
+		const unsigned kinematicDimension = 4;
+		std::vector<double> trajectory;
+	
+		virtual void SetUp(){
+			auto point1 = {0, 0, 0, 0, 2, 3};
+			auto point2 = {2, 3, 4, 5, 6, 7};
+			trajectory = yield_from(view::concat(point1, point2));
+			assert (trajectory.size() == numberOfPoints*pointDimension);
+		}
 
-	const std::vector<double> kinematicGoal = {1, 1};
+};
+
+
+TEST_F(kinematicGoalConstraintTest, ZerosWhenReachingGoal){
+	const unsigned goalTimeIndex = 1; 
+	std::vector<double> kinematicGoal = {{2, 3, 4, 5, 6, 7}};
+	const double* trajectoryPtr = trajectory.data();
 	auto getToKinematicGoalSquare =
 		GetToKinematicGoalSquare(numberOfPoints,
 														 pointDimension,
@@ -27,26 +37,15 @@ TEST(kinematicGoalConstraintTest, ZerosWhenReachingGoal){
 														 goalTimeIndex,
 														 kinematicGoal);
 
-	auto  toGoalSquares = getToKinematicGoalSquare(trajectoryWithOnesQV_ptr);
-	EXPECT_THAT(toGoalSquares, ElementsAre(0, 0));
+	auto  toGoalSquares = getToKinematicGoalSquare(trajectoryPtr);
+	EXPECT_THAT(toGoalSquares, ElementsAre(0, 0, 0, 0));
+
 }
 
-TEST(kinematicGoalConstraintTest, increasingKinematicValues){
-	const unsigned numberOfPoints = 2;    
-	const unsigned pointDimension = 6;  
-	const unsigned kinematicDimension = 4;
+TEST_F(kinematicGoalConstraintTest, increasingKinematicValues){
 	const unsigned goalTimeIndex = 1; 
-
-	const unsigned trajectoryDimension = numberOfPoints * pointDimension;
-	auto point1 = {0, 0, 0, 0, 2, 3};
-	auto point2 = {2, 3, 4, 5, 6, 7};
-
-	std::vector<double> trajectory = yield_from(view::concat(point1, point2));
-	assert (trajectory.size() == trajectoryDimension);
 	std::vector<double> kinematicGoal = {{-1, -1, -1, -1}};
-
 	const double* trajectoryPtr = trajectory.data();
-
 	auto getToKinematicGoalSquare =
 		GetToKinematicGoalSquare(numberOfPoints,
 														 pointDimension,
@@ -58,23 +57,14 @@ TEST(kinematicGoalConstraintTest, increasingKinematicValues){
 	EXPECT_THAT(toGoalSquares, ElementsAre(9, 16, 25, 36));
 }
 
-
-TEST(stackedConstriantsTest, twoKinmaticGoalConstraints){
-	const unsigned numberOfPoints = 2;    
-	const unsigned pointDimension = 6;  
-	const unsigned kinematicDimension = 4;
+TEST_F(kinematicGoalConstraintTest, twoKinmaticGoalConstraints){
 	const unsigned goalOneTimeIndex = 0; 
 	const unsigned goalTwoTimeIndex = 1; 
 
-	const unsigned trajectoryDimension = numberOfPoints * pointDimension;
-	auto point1 = {0, 0, 0, 0, 2, 3};
-	auto point2 = {2, 3, 4, 5, 6, 7};
-
-	std::vector<double> trajectory = yield_from(view::concat(point1, point2));
-	const double* trajectoryPtr = trajectory.data();
-	assert (trajectory.size() == trajectoryDimension);
 	std::vector<double> kinematicGoalOne = {{1, 2, 3, 4}};
 	std::vector<double> kinematicGoalTwo = {{-1, -1, -1, -1}};
+
+	const double* trajectoryPtr = trajectory.data();
 
 	auto getToGoalOneSquare =
 		GetToKinematicGoalSquare(numberOfPoints,
