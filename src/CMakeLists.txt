@@ -27,8 +27,13 @@ add_executable(constraintTest test/constraintTest.cpp)
 target_link_libraries(constraintTest PUBLIC GTest::GTest GTest::Main)
 target_link_libraries(constraintTest PUBLIC trajectoryOptimizationLib)
 
-add_test(optimizationCostTest costTest)
-add_test(optimizationConstriantTest constraintTest)
+add_executable(dynamicTest test/dynamicTest.cpp)
+target_link_libraries(dynamicTest PUBLIC GTest::GTest GTest::Main)
+target_link_libraries(dynamicTest PUBLIC trajectoryOptimizationLib)
+
+add_test(costTest costTest)
+add_test(constriantTest constraintTest)
+add_test(dynamicTest dynamicTest)
 
 
 

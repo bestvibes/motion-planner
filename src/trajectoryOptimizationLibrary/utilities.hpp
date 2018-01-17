@@ -17,7 +17,6 @@ namespace trajectoryOptimization::utilities{
 		std::vector<double> trajectoryWithIdenticalPoints
 												= yield_from(trajectorWithIndeticalPoints_Range);
 		return trajectoryWithIdenticalPoints;
-
 	 }
 
 

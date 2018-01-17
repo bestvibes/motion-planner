@@ -1,11 +1,14 @@
 #include <gtest/gtest.h> 
 #include <gmock/gmock.h>
 #include <range/v3/view.hpp>
+#include <functional>
 #include "utilities.hpp"
+#include "dynamic.hpp"
 #include "constraint.hpp"
 
 using namespace trajectoryOptimization::constraint;
 using namespace trajectoryOptimization::utilities;
+using namespace trajectoryOptimization::dynamics; 
 using namespace testing;
 using namespace ranges;
 
@@ -22,7 +25,6 @@ class kinematicGoalConstraintTest:public::Test{
 			trajectory = yield_from(view::concat(point1, point2));
 			assert (trajectory.size() == numberOfPoints*pointDimension);
 		}
-
 };
 
 
@@ -91,6 +93,40 @@ TEST_F(kinematicGoalConstraintTest, twoKinmaticGoalConstraints){
 	EXPECT_THAT(squaredDistanceToTwoGoals,
 							ElementsAre(1, 4, 9, 16, 9, 16, 25, 36));
 }
+
+
+class blockDynamic:public::Test{
+	protected:
+		const unsigned numberOfPoints = 2;    
+		const unsigned pointDimension = 6;  
+		const unsigned kinematicDimension = 4;
+		const double dt = 0.5;
+		std::vector<double> trajectory;
+		const double* trajectoryPtr;
+	
+		virtual void SetUp(){
+			std::vector<double> point1 = {0, 0, 3, 4, 1, 2};
+			std::vector<double> point2 = {1.5, 2, 3.5, 5, 1, 2};
+			trajectory = yield_from(view::concat(point1, point2));
+			assert (trajectory.size() == numberOfPoints*pointDimension);
+			trajectoryPtr = trajectory.data();
+		}
+};
+
+TEST_F(blockDynamic, oneTimeStepZeroVelocityAndControl){
+	const unsigned timeIndex = 0;
+	DynamicFunction blockDynamics = block;
+	auto getKinematicViolation = GetKinematicViolation(blockDynamics,
+																										 pointDimension,
+																										 kinematicDimension,
+																										 timeIndex);
+	std::vector<double> kinematicViolation = getKinematicViolation(trajectoryPtr);
+	EXPECT_THAT(kinematicViolation,
+							ElementsAre(0, 0, 0, 0));
+}
+
+
+
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

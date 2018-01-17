@@ -4,10 +4,12 @@
 #include <iterator>
 #include <functional>
 #include <range/v3/all.hpp>
+#include "dynamic.hpp"
 #include  "utilities.hpp"
 
 namespace trajectoryOptimization::constraint{
 	using namespace ranges;
+	using namespace dynamics;
 	using constraintFunction = std::function<std::vector<double>(const double*)>; 
 
 	class GetToKinematicGoalSquare{
@@ -48,6 +50,34 @@ namespace trajectoryOptimization::constraint{
 
 			return toKinematicGoalSquare;
 			}
+	
+	};
+
+	class GetKinematicViolation{
+		DynamicFunction dynamics; 
+		const unsigned pointDimension;
+		const unsigned kinematicDimension; 
+		const unsigned timeIndex;
+		int currentKinematicsStartIndex; 
+		int nextKinematicsStartIndex; 
+
+		public:
+			GetKinematicViolation(DynamicFunction dynamics,
+														const unsigned pointDimension,
+														const unsigned kinematicDimension,
+														const unsigned timeIndex):
+				dynamics(dynamics),
+				pointDimension(pointDimension),
+				kinematicDimension(kinematicDimension),
+				timeIndex(timeIndex){
+					currentKinematicsStartIndex = timeIndex*pointDimension; 
+					nextKinematicsStartIndex = (timeIndex+1)*pointDimension;
+				}
+
+			std::vector<double> operator () (const double* trajectoryPtr){
+				return {0, 0, 0, 0};
+			
+			};
 	
 	};
 
