@@ -10,6 +10,7 @@
 namespace trajectoryOptimization::constraint{
 	using namespace ranges;
 	using namespace dynamics;
+	using namespace trajectoryOptimization::utilities;
 	using constraintFunction = std::function<std::vector<double>(const double*)>; 
 
 	class GetToKinematicGoalSquare{
@@ -56,25 +57,56 @@ namespace trajectoryOptimization::constraint{
 	class GetKinematicViolation{
 		DynamicFunction dynamics; 
 		const unsigned pointDimension;
-		const unsigned kinematicDimension; 
+		const unsigned positionDimension; 
 		const unsigned timeIndex;
+		unsigned velocityDimension;
+		unsigned controlDimension;
 		int currentKinematicsStartIndex; 
 		int nextKinematicsStartIndex; 
 
 		public:
 			GetKinematicViolation(DynamicFunction dynamics,
 														const unsigned pointDimension,
-														const unsigned kinematicDimension,
+														const unsigned positionDimension,
 														const unsigned timeIndex):
 				dynamics(dynamics),
 				pointDimension(pointDimension),
-				kinematicDimension(kinematicDimension),
+				positionDimension(positionDimension),
 				timeIndex(timeIndex){
+					// assert (kinematicDimension/2 == 0);
+					velocityDimension = positionDimension;
+					controlDimension = pointDimension - positionDimension- velocityDimension;
 					currentKinematicsStartIndex = timeIndex*pointDimension; 
 					nextKinematicsStartIndex = (timeIndex+1)*pointDimension;
 				}
 
-			std::vector<double> operator () (const double* trajectoryPtr){
+			std::vector<double> operator () (const double* trajectoryPointer){
+				auto nowPoint = getTrajectoryPoint(trajectoryPointer,
+																					 timeIndex,
+																					 pointDimension);
+				auto nextPoint = getTrajectoryPoint(trajectoryPointer,
+																						timeIndex+1,
+																						pointDimension);
+
+				const auto& [nowPosition, nowVelocity, nowControl] = 
+					getPointPositionVelocityControl(nowPoint,
+																					positionDimension,
+																					velocityDimension,
+																					controlDimension);
+
+				const auto& [nextPosition, nextVelocity, nextControl] = 
+					getPointPositionVelocityControl(nextPoint,
+																					positionDimension,
+																					velocityDimension,
+																					controlDimension);
+
+				auto acceleration = dynamics(nowPosition, nowVelocity, nowControl);
+
+				// std::vector<double> nowPostion(pointDimension);
+				// std::vector<double> nowVelocity(pointDimension);
+				// std::vector<double> nowVelocity(pointDimension);
+        //
+				// std::copy_n(trajectoryPtr, trajectoryPtr+pointDimension, std::begin(nowPostion));
 				return {0, 0, 0, 0};
 			
 			};

@@ -100,6 +100,8 @@ class blockDynamic:public::Test{
 		const unsigned numberOfPoints = 2;    
 		const unsigned pointDimension = 6;  
 		const unsigned kinematicDimension = 4;
+		unsigned positionDimension;
+		unsigned velocityDimension;
 		const double dt = 0.5;
 		std::vector<double> trajectory;
 		const double* trajectoryPtr;
@@ -107,6 +109,8 @@ class blockDynamic:public::Test{
 		virtual void SetUp(){
 			std::vector<double> point1 = {0, 0, 3, 4, 1, 2};
 			std::vector<double> point2 = {1.5, 2, 3.5, 5, 1, 2};
+			positionDimension = kinematicDimension/2;
+			velocityDimension = positionDimension;
 			trajectory = yield_from(view::concat(point1, point2));
 			assert (trajectory.size() == numberOfPoints*pointDimension);
 			trajectoryPtr = trajectory.data();
@@ -118,7 +122,7 @@ TEST_F(blockDynamic, oneTimeStepZeroVelocityAndControl){
 	DynamicFunction blockDynamics = block;
 	auto getKinematicViolation = GetKinematicViolation(blockDynamics,
 																										 pointDimension,
-																										 kinematicDimension,
+																										 positionDimension,
 																										 timeIndex);
 	std::vector<double> kinematicViolation = getKinematicViolation(trajectoryPtr);
 	EXPECT_THAT(kinematicViolation,
