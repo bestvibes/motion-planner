@@ -117,18 +117,18 @@ class blockDynamic:public::Test{
 		}
 };
 
-TEST_F(blockDynamic, oneTimeStepZeroVelocityAndControl){
+TEST_F(blockDynamic, oneTimeStepNoViolation){
 	const unsigned timeIndex = 0;
 	DynamicFunction blockDynamics = block;
 	auto getKinematicViolation = GetKinematicViolation(blockDynamics,
 																										 pointDimension,
 																										 positionDimension,
-																										 timeIndex);
+																										 timeIndex, 
+																										 dt);
 	std::vector<double> kinematicViolation = getKinematicViolation(trajectoryPtr);
 	EXPECT_THAT(kinematicViolation,
 							ElementsAre(0, 0, 0, 0));
 }
-
 
 
 

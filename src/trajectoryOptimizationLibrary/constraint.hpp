@@ -59,6 +59,7 @@ namespace trajectoryOptimization::constraint{
 		const unsigned pointDimension;
 		const unsigned positionDimension; 
 		const unsigned timeIndex;
+		const double dt;
 		unsigned velocityDimension;
 		unsigned controlDimension;
 		int currentKinematicsStartIndex; 
@@ -68,11 +69,13 @@ namespace trajectoryOptimization::constraint{
 			GetKinematicViolation(DynamicFunction dynamics,
 														const unsigned pointDimension,
 														const unsigned positionDimension,
-														const unsigned timeIndex):
+														const unsigned timeIndex,
+														const double dt):
 				dynamics(dynamics),
 				pointDimension(pointDimension),
 				positionDimension(positionDimension),
-				timeIndex(timeIndex){
+				timeIndex(timeIndex),
+				dt(dt){
 					// assert (kinematicDimension/2 == 0);
 					velocityDimension = positionDimension;
 					controlDimension = pointDimension - positionDimension- velocityDimension;
@@ -102,15 +105,23 @@ namespace trajectoryOptimization::constraint{
 
 				auto acceleration = dynamics(nowPosition, nowVelocity, nowControl);
 
-				// std::vector<double> nowPostion(pointDimension);
-				// std::vector<double> nowVelocity(pointDimension);
-				// std::vector<double> nowVelocity(pointDimension);
-        //
-				// std::copy_n(trajectoryPtr, trajectoryPtr+pointDimension, std::begin(nowPostion));
-				return {0, 0, 0, 0};
-			
+				const auto& [predictedNextPosition, predictedNextVelocity] =
+				forward(nowPosition, nowVelocity, nowControl, dt);
+
+				auto different = [] (auto v1, auto v2){return v1 - v2;}; 
+
+				auto positionDifference = view::zip_with(different,
+																								 nextPosition,
+																						 		 predictedNextPosition);
+				auto velocityDifference = view::zip_with(different,
+																								 nextVelocity,
+																								 predictedNextVelocity);
+
+				std::vector<double> kinematicViolation = yield_from(
+																								 view::concat(positionDifference,
+																															velocityDifference));
+				return kinematicViolation;
 			};
-	
 	};
 
 	class StackConstriants{
