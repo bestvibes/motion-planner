@@ -97,7 +97,7 @@ TEST_F(kinematicGoalConstraintTest, twoKinmaticGoalConstraints){
 
 class blockDynamic:public::Test{
 	protected:
-		const unsigned numberOfPoints = 2;    
+		const unsigned numberOfPoints = 3;    
 		const unsigned pointDimension = 6;  
 		const unsigned kinematicDimension = 4;
 		unsigned positionDimension;
@@ -108,16 +108,17 @@ class blockDynamic:public::Test{
 	
 		virtual void SetUp(){
 			std::vector<double> point1 = {0, 0, 3, 4, 1, 2};
-			std::vector<double> point2 = {1.5, 2, 3.5, 5, 1, 2};
+			std::vector<double> point2 = {1.5, 2, 3.5, 5, 2, 4};
+			std::vector<double> point3 = {2.5, 3, 4.5, 6, 3, 5};
 			positionDimension = kinematicDimension/2;
 			velocityDimension = positionDimension;
-			trajectory = yield_from(view::concat(point1, point2));
+			trajectory = yield_from(view::concat(point1, point2, point3));
 			assert (trajectory.size() == numberOfPoints*pointDimension);
 			trajectoryPtr = trajectory.data();
 		}
 };
 
-TEST_F(blockDynamic, oneTimeStepNoViolation){
+TEST_F(blockDynamic, oneTimeStepViolation){
 	const unsigned timeIndex = 0;
 	DynamicFunction blockDynamics = block;
 	auto getKinematicViolation = GetKinematicViolation(blockDynamics,
@@ -127,9 +128,34 @@ TEST_F(blockDynamic, oneTimeStepNoViolation){
 																										 dt);
 	std::vector<double> kinematicViolation = getKinematicViolation(trajectoryPtr);
 	EXPECT_THAT(kinematicViolation,
-							ElementsAre(0, 0, 0, 0));
+							ElementsAre(-0.125, -0.25, -0.25, -0.5));
 }
 
+TEST_F(blockDynamic, twoTimeStepsViolation){
+	DynamicFunction blockDynamics = block;
+	auto getTime0KinematicViolation = GetKinematicViolation(blockDynamics,
+																										 pointDimension,
+																										 positionDimension,
+																										 0, 
+																										 dt);
+
+	auto getTime1KinematicViolation = GetKinematicViolation(blockDynamics,
+																										 pointDimension,
+																										 positionDimension,
+																										 1, 
+																										 dt);
+
+	std::vector<constraintFunction> twoStepConstraintFunctions =
+																	{getTime0KinematicViolation,
+																	getTime1KinematicViolation};
+
+	auto getStackConstriants = StackConstriants(twoStepConstraintFunctions);
+
+	auto twoStepKinematicViolations = getStackConstriants(trajectoryPtr);
+
+	EXPECT_THAT(twoStepKinematicViolations,
+							ElementsAre(-0.125, -0.25, -0.25, -0.5, -1, -1.75, -0.25, -1.25));
+}
 
 
 int main(int argc, char **argv) {

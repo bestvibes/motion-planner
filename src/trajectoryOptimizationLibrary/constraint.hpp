@@ -102,24 +102,27 @@ namespace trajectoryOptimization::constraint{
 																					positionDimension,
 																					velocityDimension,
 																					controlDimension);
+				auto getViolation = [=](auto now, auto next, auto dNow, auto dNext)
+						{return next - now - 0.5*dt*(dNow+dNext);}; 
 
-				auto acceleration = dynamics(nowPosition, nowVelocity, nowControl);
+				auto positionViolation = view::zip_with(getViolation,
+																								nowPosition,
+																								nextPosition,
+																								nowVelocity,
+																								nextVelocity) ;
 
-				const auto& [predictedNextPosition, predictedNextVelocity] =
-				forward(nowPosition, nowVelocity, nowControl, dt);
+				auto nowAcceleration = dynamics(nowPosition, nowVelocity, nowControl);
+				auto nextAcceleration = dynamics(nextPosition, nextVelocity, nextControl);
 
-				auto different = [] (auto v1, auto v2){return v1 - v2;}; 
+				auto velocityViolation = view::zip_with(getViolation,
+																								nowVelocity,
+																								nextVelocity,
+																								nowAcceleration,
+																								nextAcceleration);
 
-				auto positionDifference = view::zip_with(different,
-																								 nextPosition,
-																						 		 predictedNextPosition);
-				auto velocityDifference = view::zip_with(different,
-																								 nextVelocity,
-																								 predictedNextVelocity);
-
-				std::vector<double> kinematicViolation = yield_from(
-																								 view::concat(positionDifference,
-																															velocityDifference));
+				std::vector<double> kinematicViolation = yield_from(view::concat(
+																								 positionViolation,
+																								 velocityViolation));
 				return kinematicViolation;
 			};
 	};
