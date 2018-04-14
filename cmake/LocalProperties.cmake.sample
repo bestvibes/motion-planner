@@ -1,0 +1,15 @@
+# Required packages: gtest, gmock, ipopt, cmake, mujoco, range, glew
+
+# COPY THIS FILE TO LocalProperties.cmake AND FOLLOW THE INSTRUCTIONS BELOW
+
+# Mujoco Root Directory, this should point to the "mjpro###" folder in the
+# extracted zip you download
+set (MUJOCO_ROOT_DIR "FIXME")
+
+# Ipopt binaries/headers
+# Download and extract Ipopt, and copy include/coin into /usr/local/include/coin
+# and lib/lib*.a to /usr/local/lib
+set (Ipopt_ROOT_DIR "/usr/local")
+
+# Download Range-v3 source/headers from GitHub and point this to include folder
+set (Range3_INCLUDE_DIR "FIXME")

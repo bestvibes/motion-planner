@@ -1,5 +1,5 @@
 # - Try to find Ipopt library installation
-# The follwoing variables are optionally searched for defaults
+# The following variables are optionally searched for defaults
 # Ipopt_ROOT_DIR:            Base directory of Ipopt tree to use.
 
 # The following are set after configuration is done: 
@@ -21,15 +21,15 @@ set(Ipopt_INCLUDE_DIR "${Ipopt_ROOT_DIR}/include/coin")
 set(Ipopt_LIB_DIR "${Ipopt_ROOT_DIR}/lib")
 set(Ipopt_THIRDPARTY_INCLUDE_DIR "${Ipopt_INCLUDE_DIR}/ThirdParty")
 
-find_library(Ipopt_LIB NAMES ipopt PATHS Ipopt_LIB)
+find_library(Ipopt_LIB NAMES ipopt PATHS Ipopt_LIB_DIR)
 if (NOT Ipopt_LIB)
 	message(WARNING  "Can not find Ipopt at : " ${Ipopt_LIB_DIR})
 else()
-	message(STATUS  "find Ipopt lib at : " ${Ipopt_LIB})
+	message(STATUS  "found Ipopt lib at : " ${Ipopt_LIB})
 endif()
 
 # set(THIRDPARTY_LIB_NAMES "")
-file(GLOB Ipopt_THIRDPARTY_LIBS ${Ipopt_LIB_DIR}/libcoin*.so)
+file(GLOB Ipopt_THIRDPARTY_LIBS ${Ipopt_LIB_DIR}/libcoin*.so ${Ipopt_LIB_DIR}/libcoin*.a)
 foreach(var ${Ipopt_THIRDPARTY_LIBS})
 	message(STATUS "Ipopt ThirdParty lib: " ${var})
 endforeach()

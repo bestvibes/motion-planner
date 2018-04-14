@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.2)
 set(CMAKE_CXX_STANDARD 17)
 
-# set (MUJOCO_DIR "/home/tao/.mujoco/mjpro150")
-set (MUJOCO_ROOT_DIR "/home/tao/.mujoco/mjpro150")
-set (Ipopt_ROOT_DIR "/usr/local")
-set (Range3_INCLUDE_DIR "/home/tao/src/range-v3/include")
+# Load local dependency paths
+include(../cmake/LocalProperties.cmake)
+
+# Find dependencies
 include(../cmake/FindMujoco.cmake)
 include(../cmake/FindIpopt.cmake)
 
@@ -19,6 +19,7 @@ target_include_directories(trajectoryOptimizationLib INTERFACE
 
 enable_testing()
 find_package(GTest REQUIRED)
+
 add_executable(costTest test/costTest.cpp)
 target_link_libraries(costTest PUBLIC GTest::GTest GTest::Main)
 target_link_libraries(costTest PUBLIC trajectoryOptimizationLib)

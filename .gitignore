@@ -1,4 +1,7 @@
 *.sw*
-*/build
+*build/
 *__pycache__*
 .DS_Store
+
+# Don't push local properties
+cmake/LocalProperties.cmake
