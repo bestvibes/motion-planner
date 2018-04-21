@@ -21,7 +21,7 @@ namespace trajectoryOptimization::dynamics{
 				return control;
 	}
 
-	std::tuple<dvector, dvector> forward(const dvector& position,
+	std::tuple<dvector, dvector> stepForward(const dvector& position,
 																			 const dvector& velocity,
 																			 const dvector& acceleration,
 																			 const double dt) {

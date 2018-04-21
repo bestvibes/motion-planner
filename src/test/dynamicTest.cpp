@@ -28,7 +28,7 @@ TEST(forward, zeroVelocityAndControl){
 	dvector acceleration =  {0, 0};
 	const int dt = 1.0;
 
-	auto [nextPosition, nextVelocity] = forward(position, velocity, acceleration, dt);
+	auto [nextPosition, nextVelocity] = stepForward(position, velocity, acceleration, dt);
 
 	EXPECT_THAT(position, nextPosition);
 	EXPECT_THAT(velocity, nextVelocity);
@@ -40,7 +40,7 @@ TEST(forward, noneZeroVelocityZeroControl){
 	dvector acceleration =  {0, 0};
 	const double dt = 0.5;
 
-	auto [nextPosition, nextVelocity] = forward(position, velocity, acceleration, dt);
+	auto [nextPosition, nextVelocity] = stepForward(position, velocity, acceleration, dt);
 
 	EXPECT_THAT(nextPosition, ElementsAre(1.5, 3));
 	EXPECT_THAT(nextVelocity, ElementsAre(1, 2));
@@ -53,7 +53,7 @@ TEST(forward, noneZeroVelocityAndNoneZeroControl){
 	dvector acceleration =  {3, 5};
 	const double dt = 0.5;
 
-	auto [nextPosition, nextVelocity] = forward(position, velocity, acceleration, dt);
+	auto [nextPosition, nextVelocity] = stepForward(position, velocity, acceleration, dt);
 
 	EXPECT_THAT(nextPosition, ElementsAre(1.5, 3));
 	EXPECT_THAT(nextVelocity, ElementsAre(2.5, 4.5));
