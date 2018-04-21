@@ -38,31 +38,3 @@ namespace trajectoryOptimization::dynamics{
 	}
 
 }
-
-
-// namespace traj_opt{
-// namespace dynamics{
-// 	template <unsigned NQ, unsigned NV, unsigned NU>
-// 	class Block{
-// 		public:
-// 			Block(const int _qd, const int _vd, const int _ud):
-// 				qd(_qd),
-// 				vd(_vd),
-// 				ud(_ud){
-// 					start = qd+vd;
-// 				}
-// 			//for a block, the dynamcis (aka accelation) is just the control u;
-// 		const Point operator()(const Point& point) const {
-// 			auto s_iter = point.begin() + start;
-// 			auto e_iter = s_iter + ud; 
-// 			Point u_vec(s_iter, e_iter);
-// 			return u_vec;
-// 		}  
-// 		private:
-// 			const int qd;
-// 			const int vd;
-// 			const int ud;
-// 			int start;
-// 	};
-// }
-// }
