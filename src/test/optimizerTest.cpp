@@ -207,5 +207,127 @@ TEST(optimizerTest, TestSampleCode) {
 	EXPECT_THAT(status, Solve_Succeeded);
 	EXPECT_THAT(final_obj, Ge(17.013));
 	EXPECT_THAT(final_obj, Lt(17.015));
+}
 
+TEST(optimizerTest, SolutionForZeroes) {
+	OptimizerParameters optimizerParameters = {.numberVariablesX = 2,
+												.numberConstraintsG = 0,
+												.numberNonzeroJacobian = 0,
+												.numberNonzeroHessian = 0};
+
+	BoundsFunction boundsFunction = [](Index n, Index m, BoundsData* boundsData) {
+		for (Index i=0; i<2; i++)
+			boundsData->xLower[i] = 0.0;
+
+		for (Index i=0; i<2; i++)
+			boundsData->xUpper[i] = 5.0;
+
+		return true;
+	};
+
+	StartingPointFunction startingPointFunction = [](Index n, Index m, StartingPointData* startingPointData) {
+		assert(startingPointData->initX == true);
+		assert(startingPointData->initZ == false);
+		assert(startingPointData->initLambda == false);
+
+		startingPointData->x[0] = 0;
+		startingPointData->x[1] = 0;
+
+		return true;
+	};
+
+	ObjectiveFunction objectiveFunction = [](Index n, const Number* x, Number& objValue) {
+		objValue = 0;
+		return true;
+	};
+
+	GradientFunction gradientFunction = [](Index n, const Number* x, Number* gradF) {
+		return true;
+	};
+
+	ConstraintFunction constraintFunction = [](Index n, const Number* x, Index m, Number* g) {
+		return true;
+	};
+
+	JacobianStructureFunction jacobianStructureFunction = [](Index n, Index m, Index numberElementsJacobian,
+																Index* iRow, Index *jCol) {
+		return true;
+	};
+
+	JacobianValueFunction jacobianValueFunction = [](Index n, const Number* x, Index m,
+														Index numberElementsJacobian, Number* values) {
+		return true;
+	};
+
+	HessianStructureFunction hessianStructureFunction = [](Index n, Index m,
+															Index numberElementsHessian,
+															Index* iRow, Index* jCol) {
+		return true;
+	};
+
+	HessianValueFunction hessianValueFunction = [](Index n, const Number* x,
+													Number objFactor, Index m, const Number* lambda,
+													Index numberElementsHessian, Number* values) {
+		return true;
+	};
+
+	FinalizerFunction finalizerFunction = [](SolverReturn status, Index n, const Number* x,
+												const Number* zLower, const Number* zUpper,
+												Index m, const Number* g, const Number* lambda,
+												Number objValue, const IpoptData* ipData,
+												IpoptCalculatedQuantities* ipCalculatedQuantities) {
+		printf("\n\nSolution of the primal variables, x\n");
+		for (Index i=0; i<n; i++) {
+			printf("x[%d] = %e\n", i, x[i]); 
+		}
+
+		printf("\n\nSolution of the bound multipliers, z_L and z_U\n");
+		for (Index i=0; i<n; i++) {
+			printf("z_L[%d] = %e\n", i, zLower[i]); 
+		}
+		for (Index i=0; i<n; i++) {
+			printf("z_U[%d] = %e\n", i, zUpper[i]); 
+		}
+
+		printf("\n\nObjective value\n");
+		printf("f(x*) = %e\n", objValue); 
+	};
+
+	SmartPtr<TNLP> trajectoryOptimizer = new TrajectoryOptimizer(&optimizerParameters,
+												boundsFunction,
+												startingPointFunction,
+												objectiveFunction,
+												gradientFunction,
+												constraintFunction,
+												jacobianStructureFunction,
+												jacobianValueFunction,
+												hessianStructureFunction,
+												hessianValueFunction,
+												finalizerFunction);
+
+	SmartPtr<IpoptApplication> app = IpoptApplicationFactory();
+
+	app->Options()->SetNumericValue("tol", 1e-9);
+	app->Options()->SetStringValue("mu_strategy", "adaptive");
+
+	ApplicationReturnStatus status;
+	status = app->Initialize();
+	if (status != Solve_Succeeded) {
+		std::cout << std::endl << std::endl << "*** Error during initialization!" << std::endl;
+		FAIL();
+	}
+
+	status = app->OptimizeTNLP(trajectoryOptimizer);
+
+	Number final_obj;
+	if (status == Solve_Succeeded) {
+		Index iter_count = app->Statistics()->IterationCount();
+		std::cout << std::endl << std::endl << "*** The problem solved in " << iter_count << " iterations!" << std::endl;
+
+		final_obj = app->Statistics()->FinalObjective();
+		std::cout << std::endl << std::endl << "*** The final value of the objective function is " << final_obj << '.' << std::endl;
+	}
+
+	EXPECT_THAT(status, Solve_Succeeded);
+	EXPECT_THAT(final_obj, 0);
 }
