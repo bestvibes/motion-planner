@@ -7,7 +7,7 @@
 #include <functional>
 #include <range/v3/view.hpp>
 
-namespace trajectoryOptimization::dynamics{
+namespace trajectoryOptimization::dynamics {
 	using dvector = std::vector<double>; 
 	using DynamicFunction = std::function<dvector(const dvector&,
 																								const dvector&,

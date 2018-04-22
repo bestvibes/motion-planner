@@ -40,10 +40,15 @@ add_executable(utilitiesTest test/utilitiesTest.cpp)
 target_link_libraries(utilitiesTest PUBLIC GTest::GTest GTest::Main)
 target_link_libraries(utilitiesTest PUBLIC trajectoryOptimizationLib)
 
+add_executable(optimizerTest test/optimizerTest.cpp)
+target_link_libraries(optimizerTest PUBLIC GTest::GTest GTest::Main)
+target_link_libraries(optimizerTest PUBLIC trajectoryOptimizationLib)
+
 add_test(costTest costTest)
 add_test(constriantTest constraintTest)
 add_test(dynamicTest dynamicTest)
 add_test(utilitiesTest utilitiesTest)
+add_test(optimizerTest optimizerTest)
 
 
 
