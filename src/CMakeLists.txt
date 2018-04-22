@@ -15,7 +15,11 @@ endif()
 add_library(trajectoryOptimizationLib INTERFACE)
 target_include_directories(trajectoryOptimizationLib INTERFACE
 	${Range3_INCLUDE_DIR}
+	${IPOPT_INCLUDE_DIR}
+	${MUJOCO_INCLUDE_DIR}
 	"${PROJECT_SOURCE_DIR}/trajectoryOptimizationLibrary")
+target_link_libraries(trajectoryOptimizationLib INTERFACE
+	${IPOPT_LIBRARIES})
 
 enable_testing()
 find_package(GTest REQUIRED)
