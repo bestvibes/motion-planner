@@ -11,105 +11,73 @@ using namespace Ipopt;
 
 TEST(optimizerTest, TestSampleCode) {
 
-	OptimizerParameters optimizerParameters = {.numberVariablesX = 4,
-												.numberConstraintsG = 2,
-												.numberNonzeroJacobian = 8,
-												.numberNonzeroHessian = 10};
+	const int numberVariablesX = 4;
+	const int numberConstraintsG = 2;
+	const int numberNonzeroJacobian = 8;
+	const int numberNonzeroHessian = 10;
 
-	BoundsFunction boundsFunction = [](Index n, Index m, BoundsData* boundsData) {
-		for (Index i=0; i<4; i++)
-			boundsData->xLower[i] = 1.0;
+	const numberVector xLowerBounds = {1.0, 1.0, 1.0, 1.0};
+	const numberVector xUpperBounds = {5.0, 5.0, 5.0, 5.0};
+	const numberVector gLowerBounds = {25, 40.0};
+	const numberVector gUpperBounds = {2e19, 40.0};
 
-		for (Index i=0; i<4; i++)
-			boundsData->xUpper[i] = 5.0;
+	const numberVector xStartingPoint = {1.0, 5.0, 5.0, 1.0};
 
-		boundsData->gLower[0] = 25;
-		boundsData->gUpper[0] = 2e19; // == inf
-
-		boundsData->gLower[1] = boundsData->gUpper[1] = 40.0;
-
-		return true;
+	ObjectiveFunction objectiveFunction = [](Index n, const Number* x) {
+		return x[0] * x[3] * (x[0] + x[1] + x[2]) + x[2];
 	};
 
-	StartingPointFunction startingPointFunction = [](Index n, Index m, StartingPointData* startingPointData) {
-		assert(startingPointData->initX == true);
-		assert(startingPointData->initZ == false);
-		assert(startingPointData->initLambda == false);
-
-		startingPointData->x[0] = 1.0;
-		startingPointData->x[1] = 5.0;
-		startingPointData->x[2] = 5.0;
-		startingPointData->x[3] = 1.0;
-
-		return true;
+	GradientFunction gradientFunction = [](Index n, const Number* x) {
+		numberVector gradF;
+		gradF.push_back(x[0] * x[3] + x[3] * (x[0] + x[1] + x[2]));
+		gradF.push_back(x[0] * x[3]);
+		gradF.push_back(x[0] * x[3] + 1);
+		gradF.push_back(x[0] * (x[0] + x[1] + x[2]));
+		return gradF;
 	};
 
-	ObjectiveFunction objectiveFunction = [](Index n, const Number* x, Number& objValue) {
-		objValue = x[0] * x[3] * (x[0] + x[1] + x[2]) + x[2];
-		return true;
+	ConstraintFunction constraintFunction = [](Index n, const Number* x, Index m) {
+		numberVector g;
+		g.push_back(x[0] * x[1] * x[2] * x[3]);
+		g.push_back(x[0]*x[0] + x[1]*x[1] + x[2]*x[2] + x[3]*x[3]);
+		return g;
 	};
 
-	GradientFunction gradientFunction = [](Index n, const Number* x, Number* gradF) {
-		gradF[0] = x[0] * x[3] + x[3] * (x[0] + x[1] + x[2]);
-		gradF[1] = x[0] * x[3];
-		gradF[2] = x[0] * x[3] + 1;
-		gradF[3] = x[0] * (x[0] + x[1] + x[2]);
-		return true;
-	};
-
-	ConstraintFunction constraintFunction = [](Index n, const Number* x, Index m, Number* g) {
-		g[0] = x[0] * x[1] * x[2] * x[3];
-		g[1] = x[0]*x[0] + x[1]*x[1] + x[2]*x[2] + x[3]*x[3];
-		return true;
-	};
-
-	JacobianStructureFunction jacobianStructureFunction = [](Index n, Index m, Index numberElementsJacobian,
-																Index* iRow, Index *jCol) {
-		iRow[0] = 0; jCol[0] = 0;
-		iRow[1] = 0; jCol[1] = 1;
-		iRow[2] = 0; jCol[2] = 2;
-		iRow[3] = 0; jCol[3] = 3;
-		iRow[4] = 1; jCol[4] = 0;
-		iRow[5] = 1; jCol[5] = 1;
-		iRow[6] = 1; jCol[6] = 2;
-		iRow[7] = 1; jCol[7] = 3;
-
-		return true;
-	};
+	indexVector jacStructureRows = {0, 0, 0, 0, 1, 1, 1, 1};
+	indexVector jacStructureCols = {0, 1, 2, 3, 0, 1, 2 ,3};
 
 	JacobianValueFunction jacobianValueFunction = [](Index n, const Number* x, Index m,
-														Index numberElementsJacobian, Number* values) {
-		values[0] = x[1]*x[2]*x[3]; // 0,0
-		values[1] = x[0]*x[2]*x[3]; // 0,1
-		values[2] = x[0]*x[1]*x[3]; // 0,2
-		values[3] = x[0]*x[1]*x[2]; // 0,3
+														Index numberElementsJacobian) {
+		numberVector values = {
+			x[1]*x[2]*x[3], // 0,0
+			x[0]*x[2]*x[3], // 0,1
+			x[0]*x[1]*x[3], // 0,2
+			x[0]*x[1]*x[2], // 0,3
+			2*x[0], // 1,0
+			2*x[1], // 1,1
+			2*x[2], // 1,2
+			2*x[3], // 1,3
+		};
 
-		values[4] = 2*x[0]; // 1,0
-		values[5] = 2*x[1]; // 1,1
-		values[6] = 2*x[2]; // 1,2
-		values[7] = 2*x[3]; // 1,3
-
-		return true;
+		return values;
 	};
 
-	HessianStructureFunction hessianStructureFunction = [](Index n, Index m,
-															Index numberElementsHessian,
-															Index* iRow, Index* jCol) {
-		Index idx=0;
-		for (Index row = 0; row < 4; row++) {
-			for (Index col = 0; col <= row; col++) {
-				iRow[idx] = row; 
-				jCol[idx] = col;
-				idx++;
-			}
+	indexVector hessianStructureRows;
+	indexVector hessianStructureCols;
+
+	for (Index row = 0; row < 4; row++) {
+		for (Index col = 0; col <= row; col++) {
+			hessianStructureRows.push_back(row);
+			hessianStructureCols.push_back(col);
 		}
-
-		return idx == numberElementsHessian;
-	};
+	}
 
 	HessianValueFunction hessianValueFunction = [](Index n, const Number* x,
 													Number objFactor, Index m, const Number* lambda,
-													Index numberElementsHessian, Number* values) {
+													Index numberElementsHessian) {
+		
+		numberVector values(numberNonzeroHessian);
+
 		values[0] = objFactor * (2*x[3]); // 0,0
 
 		values[1] = objFactor * (x[3]);   // 1,0
@@ -144,7 +112,7 @@ TEST(optimizerTest, TestSampleCode) {
 
 		values[9] += lambda[1] * 2; // 3,3
 
-		return true;
+		return values;
 	};
 
 	FinalizerFunction finalizerFunction = [](SolverReturn status, Index n, const Number* x,
@@ -169,15 +137,23 @@ TEST(optimizerTest, TestSampleCode) {
 		printf("f(x*) = %e\n", objValue); 
 	};
 
-	SmartPtr<TNLP> trajectoryOptimizer = new TrajectoryOptimizer(&optimizerParameters,
-												boundsFunction,
-												startingPointFunction,
+	SmartPtr<TNLP> trajectoryOptimizer = new TrajectoryOptimizer(numberVariablesX,
+												numberConstraintsG,
+												numberNonzeroJacobian,
+												numberNonzeroHessian,
+												xLowerBounds,
+												xUpperBounds,
+												gLowerBounds,
+												gUpperBounds,
+												xStartingPoint,
 												objectiveFunction,
 												gradientFunction,
 												constraintFunction,
-												jacobianStructureFunction,
+												jacStructureRows,
+												jacStructureCols,
 												jacobianValueFunction,
-												hessianStructureFunction,
+												hessianStructureRows,
+												hessianStructureCols,
 												hessianValueFunction,
 												finalizerFunction);
 
@@ -210,65 +186,44 @@ TEST(optimizerTest, TestSampleCode) {
 }
 
 TEST(optimizerTest, SolutionForZeroes) {
-	OptimizerParameters optimizerParameters = {.numberVariablesX = 2,
-												.numberConstraintsG = 0,
-												.numberNonzeroJacobian = 0,
-												.numberNonzeroHessian = 0};
+	const int numberVariablesX = 2;
+	const int numberConstraintsG = 0;
+	const int numberNonzeroJacobian = 0;
+	const int numberNonzeroHessian = 0;
 
-	BoundsFunction boundsFunction = [](Index n, Index m, BoundsData* boundsData) {
-		for (Index i=0; i<2; i++)
-			boundsData->xLower[i] = 0.0;
+	const numberVector xLowerBounds = {0, 0};
+	const numberVector xUpperBounds = {5, 5};
+	const numberVector gBounds;
 
-		for (Index i=0; i<2; i++)
-			boundsData->xUpper[i] = 5.0;
+	const numberVector xStartingPoint = {0, 0};
 
-		return true;
+	ObjectiveFunction objectiveFunction = [](Index n, const Number* x) {
+		return 0;
 	};
 
-	StartingPointFunction startingPointFunction = [](Index n, Index m, StartingPointData* startingPointData) {
-		assert(startingPointData->initX == true);
-		assert(startingPointData->initZ == false);
-		assert(startingPointData->initLambda == false);
-
-		startingPointData->x[0] = 0;
-		startingPointData->x[1] = 0;
-
-		return true;
+	GradientFunction gradientFunction = [](Index n, const Number* x) {
+		numberVector v = {0, 0};
+		return v;
 	};
 
-	ObjectiveFunction objectiveFunction = [](Index n, const Number* x, Number& objValue) {
-		objValue = 0;
-		return true;
+	ConstraintFunction constraintFunction = [](Index n, const Number* x, Index m) {
+		numberVector v;
+		return v;
 	};
 
-	GradientFunction gradientFunction = [](Index n, const Number* x, Number* gradF) {
-		return true;
-	};
-
-	ConstraintFunction constraintFunction = [](Index n, const Number* x, Index m, Number* g) {
-		return true;
-	};
-
-	JacobianStructureFunction jacobianStructureFunction = [](Index n, Index m, Index numberElementsJacobian,
-																Index* iRow, Index *jCol) {
-		return true;
-	};
+	indexVector jacHessStructure;
 
 	JacobianValueFunction jacobianValueFunction = [](Index n, const Number* x, Index m,
-														Index numberElementsJacobian, Number* values) {
-		return true;
-	};
-
-	HessianStructureFunction hessianStructureFunction = [](Index n, Index m,
-															Index numberElementsHessian,
-															Index* iRow, Index* jCol) {
-		return true;
+														Index numberElementsJacobian) {
+		numberVector v;
+		return v;
 	};
 
 	HessianValueFunction hessianValueFunction = [](Index n, const Number* x,
 													Number objFactor, Index m, const Number* lambda,
-													Index numberElementsHessian, Number* values) {
-		return true;
+													Index numberElementsHessian) {
+		numberVector v;
+		return v;
 	};
 
 	FinalizerFunction finalizerFunction = [](SolverReturn status, Index n, const Number* x,
@@ -293,15 +248,23 @@ TEST(optimizerTest, SolutionForZeroes) {
 		printf("f(x*) = %e\n", objValue); 
 	};
 
-	SmartPtr<TNLP> trajectoryOptimizer = new TrajectoryOptimizer(&optimizerParameters,
-												boundsFunction,
-												startingPointFunction,
+	SmartPtr<TNLP> trajectoryOptimizer = new TrajectoryOptimizer(numberVariablesX,
+												numberConstraintsG,
+												numberNonzeroJacobian,
+												numberNonzeroHessian,
+												xLowerBounds,
+												xUpperBounds,
+												gBounds,
+												gBounds,
+												xStartingPoint,
 												objectiveFunction,
 												gradientFunction,
 												constraintFunction,
-												jacobianStructureFunction,
+												jacHessStructure,
+												jacHessStructure,
 												jacobianValueFunction,
-												hessianStructureFunction,
+												jacHessStructure,
+												jacHessStructure,
 												hessianValueFunction,
 												finalizerFunction);
 

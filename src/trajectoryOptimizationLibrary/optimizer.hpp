@@ -5,72 +5,75 @@ namespace trajectoryOptimization::optimizer {
 
 	using namespace Ipopt;
 
-	struct OptimizerParameters {
-		int numberVariablesX;
-		int numberConstraintsG;
-		int numberNonzeroJacobian;
-		int numberNonzeroHessian;
-	};
+	using numberVector = std::vector<Number>;
+	using indexVector = std::vector<Index>;
 
-	struct BoundsData {
-		Number* xLower;
-		Number* xUpper;
-		Number* gLower;
-		Number* gUpper;
-	};
-
-	struct StartingPointData {
-		const bool initX;
-		const bool initZ;
-		const bool initLambda;
-		Number* x;
-		Number* zLower;
-		Number* zUpper;
-		Number* lambda;
-	};
-
-	using BoundsFunction = bool(*)(Index n, Index m, BoundsData* bounds);
-	using StartingPointFunction = bool(*)(Index n, Index m, StartingPointData* startingPointData);
-	using ObjectiveFunction = bool(*)(Index n, const Number* x, Number& objValue);
-	using GradientFunction = bool(*)(Index n, const Number* x, Number* gradF);
-	using ConstraintFunction = bool(*)(Index n, const Number* x, Index m, Number* g);
-	using JacobianStructureFunction = bool(*)(Index n, Index m, Index numberElementsJacobian, Index* iRow, Index *jCol);
-	using JacobianValueFunction = bool(*)(Index n, const Number* x, Index m, Index numberElementsJacobian, Number* values);
-	using HessianStructureFunction = bool(*)(Index n, Index m, Index numberElementsHessian, Index* iRow, Index* jCol);
-	using HessianValueFunction = bool(*)(Index n, const Number* x, Number objFactor, Index m, const Number* lambda,
-										Index numberElementsHessian, Number* values);
-	using FinalizerFunction = void(*)(SolverReturn status, Index n, const Number* x, const Number* zLower, const Number* zUpper,
+	using ObjectiveFunction = std::function<Number(Index n, const Number* x)>;
+	using GradientFunction = std::function<const numberVector(Index n, const Number* x)>;
+	using ConstraintFunction = std::function<const numberVector(Index n, const Number* x, Index m)>;
+	using JacobianValueFunction = std::function<const numberVector(Index n, const Number* x, Index m, Index numberElementsJacobians)>;
+	using HessianValueFunction = std::function<const numberVector(Index n, const Number* x, Number objFactor, Index m, const Number* lambda,
+										Index numberElementsHessian)>;
+	using FinalizerFunction = std::function<void(SolverReturn status, Index n, const Number* x, const Number* zLower, const Number* zUpper,
 										Index m, const Number* g, const Number* lambda,Number objValue,
-										const IpoptData* ipData, IpoptCalculatedQuantities* ipCalulatedQuantities);
+										const IpoptData* ipData, IpoptCalculatedQuantities* ipCalulatedQuantities)>;
 
 	class TrajectoryOptimizer : public TNLP
 	{
 	public:
-		TrajectoryOptimizer(OptimizerParameters* optimizerParameters,
-							BoundsFunction boundsFunction,
-							StartingPointFunction startingPointFunction,
-							ObjectiveFunction objectiveFunction,
-							GradientFunction gradientFunction,
-							ConstraintFunction constraintFunction,
-							JacobianStructureFunction jacobianStructureFunction,
-							JacobianValueFunction jacobianValueFunction,
-							HessianStructureFunction hessianStructureFunction,
-							HessianValueFunction hessianValueFunction,
-							FinalizerFunction finalizerFunction) :
-			numberVariablesX(optimizerParameters->numberVariablesX),
-			numberConstraintsG(optimizerParameters->numberConstraintsG),
-			numberNonzeroJacobian(optimizerParameters->numberNonzeroJacobian),
-			numberNonzeroHessian(optimizerParameters->numberNonzeroHessian),
-			boundsFunction(boundsFunction),
-			startingPointFunction(startingPointFunction),
+		TrajectoryOptimizer(const int numberVariablesX,
+							const int numberConstraintsG,
+							const int numberNonzeroJacobian,
+							const int numberNonzeroHessian,
+							const numberVector& xLowerBounds,
+							const numberVector& xUpperBounds,
+							const numberVector& gLowerBounds,
+							const numberVector& gUpperBounds,
+							const numberVector& xStartingPoint,
+							// z and lambda starting point not implemented
+							const ObjectiveFunction objectiveFunction,
+							const GradientFunction gradientFunction,
+							const ConstraintFunction constraintFunction,
+							const indexVector& jacobianStructureRows,
+							const indexVector& jacobianStructureCols,
+							const JacobianValueFunction jacobianValueFunction,
+							const indexVector& hessianStructureRows,
+							const indexVector& hessianStructureCols,
+							const HessianValueFunction hessianValueFunction,
+							const FinalizerFunction finalizerFunction) :
+			numberVariablesX(numberVariablesX),
+			numberConstraintsG(numberConstraintsG),
+			numberNonzeroJacobian(numberNonzeroJacobian),
+			numberNonzeroHessian(numberNonzeroHessian),
+			xLowerBounds(xLowerBounds),
+			xUpperBounds(xUpperBounds),
+			gLowerBounds(gLowerBounds),
+			gUpperBounds(gUpperBounds),
+			xStartingPoint(xStartingPoint),
 			objectiveFunction(objectiveFunction),
 			gradientFunction(gradientFunction),
 			constraintFunction(constraintFunction),
-			jacobianStructureFunction(jacobianStructureFunction),
+			jacobianStructureRows(jacobianStructureRows),
+			jacobianStructureCols(jacobianStructureCols),
 			jacobianValueFunction(jacobianValueFunction),
-			hessianStructureFunction(hessianStructureFunction),
+			hessianStructureRows(hessianStructureRows),
+			hessianStructureCols(hessianStructureCols),
 			hessianValueFunction(hessianValueFunction),
-			finalizerFunction(finalizerFunction) {}
+			finalizerFunction(finalizerFunction) {
+
+				assert(numberVariablesX == xLowerBounds.size());
+				assert(numberVariablesX == xUpperBounds.size());
+				assert(numberConstraintsG == gLowerBounds.size());
+				assert(numberConstraintsG == gUpperBounds.size());
+
+				assert(numberVariablesX == xStartingPoint.size());
+
+				assert(numberNonzeroJacobian == jacobianStructureRows.size());
+				assert(numberNonzeroJacobian == jacobianStructureCols.size());
+
+				assert(numberNonzeroHessian == hessianStructureRows.size());
+				assert(numberNonzeroHessian == hessianStructureCols.size());
+			}
 		virtual ~TrajectoryOptimizer() {}
 
 		virtual bool get_nlp_info(Index& n, Index& m, Index& nnz_jac_g,
@@ -88,9 +91,12 @@ namespace trajectoryOptimization::optimizer {
 			assert(n == numberVariablesX);
 			assert(m == numberConstraintsG);
 
-			BoundsData boundsData = {.xLower=x_l, .xUpper=x_u, .gLower=g_l, .gUpper=g_u};
+			std::copy(xLowerBounds.begin(), xLowerBounds.end(), x_l);
+			std::copy(xUpperBounds.begin(), xUpperBounds.end(), x_u);
+			std::copy(gLowerBounds.begin(), gLowerBounds.end(), g_l);
+			std::copy(gUpperBounds.begin(), gUpperBounds.end(), g_u);
 
-			return boundsFunction(n, m, &boundsData);
+			return true;
 		}
 
 		virtual bool get_starting_point(Index n, bool init_x, Number* x,
@@ -100,31 +106,46 @@ namespace trajectoryOptimization::optimizer {
 			assert(n == numberVariablesX);
 			assert(m == numberConstraintsG);
 
-			StartingPointData startingPointData = {.initX=init_x,
-												  .initZ=init_z,
-												  .initLambda=init_lambda,
-												  .x=x,
-												  .zLower=z_L,
-												  .zUpper=z_U,
-												  .lambda=lambda};
+			if (init_x) {
+				std::copy(xStartingPoint.begin(), xStartingPoint.end(), x);
+			}
 
-			return startingPointFunction(n, m, &startingPointData);
+			if (init_z) {
+				printf("WARNING: Ipopt wants z starting point, not implemented");
+			}
+
+			if (init_lambda) {
+				printf("WARNING: Ipopt wants lambda starting point, not implemented");
+			}
+
+			return true;
 		}
 
 		virtual bool eval_f(Index n, const Number* x, bool new_x, Number& obj_value) {
 			assert(n == numberVariablesX);
-			return objectiveFunction(n, x, obj_value);
+			obj_value = objectiveFunction(n, x);
+			return true;
 		}
 
 		virtual bool eval_grad_f(Index n, const Number* x, bool new_x, Number* grad_f) {
 			assert(n == numberVariablesX);
-			return gradientFunction(n, x, grad_f);
+
+			numberVector grad_output = gradientFunction(n, x);
+			assert(n == grad_output.size());
+
+			std::copy(grad_output.begin(), grad_output.end(), grad_f);
+			return true;
 		}
 
 		virtual bool eval_g(Index n, const Number* x, bool new_x, Index m, Number* g) {
 			assert(n == numberVariablesX);
 			assert(m == numberConstraintsG);
-			return constraintFunction(n, x, m, g);
+
+			numberVector constraint_output = constraintFunction(n, x, m);
+			assert(m == constraint_output.size());
+
+			std::copy(constraint_output.begin(), constraint_output.end(), g);
+			return true;
 		}
 
 		virtual bool eval_jac_g(Index n, const Number* x, bool new_x,
@@ -135,10 +156,15 @@ namespace trajectoryOptimization::optimizer {
 			assert(nele_jac == numberNonzeroJacobian);
 
 			if (values == NULL) {
-				return jacobianStructureFunction(n, m, nele_jac, iRow, jCol);
+				std::copy(jacobianStructureRows.begin(), jacobianStructureRows.end(), iRow);
+				std::copy(jacobianStructureCols.begin(), jacobianStructureCols.end(), jCol);
+				return true;
 			}
 			else {
-				return jacobianValueFunction(n, x, m, nele_jac, values);
+				numberVector vals = jacobianValueFunction(n, x, m, nele_jac);
+				assert(nele_jac == vals.size());
+				std::copy(vals.begin(), vals.end(), values);
+				return true;
 			}
 		}
 
@@ -151,10 +177,15 @@ namespace trajectoryOptimization::optimizer {
 			assert(nele_hess == numberNonzeroHessian);
 
 			if (values == NULL) {
-				return hessianStructureFunction(n, m, nele_hess, iRow, jCol);
+				std::copy(hessianStructureRows.begin(), hessianStructureRows.end(), iRow);
+				std::copy(hessianStructureCols.begin(), hessianStructureCols.end(), jCol);
+				return true;
 			}
 			else {
-				return hessianValueFunction(n, x, obj_factor, m, lambda, nele_hess, values);
+				numberVector vals = hessianValueFunction(n, x, obj_factor, m, lambda, nele_hess);
+				assert(nele_hess == vals.size());
+				std::copy(vals.begin(), vals.end(), values);
+				return true;
 			}
 		}
 
@@ -192,15 +223,25 @@ namespace trajectoryOptimization::optimizer {
 		const int numberNonzeroJacobian;
 		const int numberNonzeroHessian;
 
-		const BoundsFunction boundsFunction;
-		const StartingPointFunction startingPointFunction;
+		const numberVector xLowerBounds;
+		const numberVector xUpperBounds;
+		const numberVector gLowerBounds;
+		const numberVector gUpperBounds;
+
+		const numberVector xStartingPoint;
+
 		const ObjectiveFunction objectiveFunction;
 		const GradientFunction gradientFunction;
 		const ConstraintFunction constraintFunction;
-		const JacobianStructureFunction jacobianStructureFunction;
+
+		const indexVector jacobianStructureRows;
+		const indexVector jacobianStructureCols;
 		const JacobianValueFunction jacobianValueFunction;
-		const HessianStructureFunction hessianStructureFunction;
+		
+		const indexVector hessianStructureRows;
+		const indexVector hessianStructureCols;
 		const HessianValueFunction hessianValueFunction;
+
 		const FinalizerFunction finalizerFunction;
   };
 }
