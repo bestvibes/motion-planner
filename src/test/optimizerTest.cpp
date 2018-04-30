@@ -23,11 +23,11 @@ TEST(optimizerTest, TestSampleCode) {
 
 	const numberVector xStartingPoint = {1.0, 5.0, 5.0, 1.0};
 
-	ObjectiveFunction objectiveFunction = [](Index n, const Number* x) {
+	EvaluateObjectiveFunction objectiveFunction = [](Index n, const Number* x) {
 		return x[0] * x[3] * (x[0] + x[1] + x[2]) + x[2];
 	};
 
-	GradientFunction gradientFunction = [](Index n, const Number* x) {
+	EvaluateGradientFunction gradientFunction = [](Index n, const Number* x) {
 		numberVector gradF;
 		gradF.push_back(x[0] * x[3] + x[3] * (x[0] + x[1] + x[2]));
 		gradF.push_back(x[0] * x[3]);
@@ -36,7 +36,7 @@ TEST(optimizerTest, TestSampleCode) {
 		return gradF;
 	};
 
-	ConstraintFunction constraintFunction = [](Index n, const Number* x, Index m) {
+	EvaluateConstraintFunction constraintFunction = [](Index n, const Number* x, Index m) {
 		numberVector g;
 		g.push_back(x[0] * x[1] * x[2] * x[3]);
 		g.push_back(x[0]*x[0] + x[1]*x[1] + x[2]*x[2] + x[3]*x[3]);
@@ -46,7 +46,7 @@ TEST(optimizerTest, TestSampleCode) {
 	indexVector jacStructureRows = {0, 0, 0, 0, 1, 1, 1, 1};
 	indexVector jacStructureCols = {0, 1, 2, 3, 0, 1, 2 ,3};
 
-	JacobianValueFunction jacobianValueFunction = [](Index n, const Number* x, Index m,
+	GetJacobianValueFunction jacobianValueFunction = [](Index n, const Number* x, Index m,
 														Index numberElementsJacobian) {
 		numberVector values = {
 			x[1]*x[2]*x[3], // 0,0
@@ -72,7 +72,7 @@ TEST(optimizerTest, TestSampleCode) {
 		}
 	}
 
-	HessianValueFunction hessianValueFunction = [](Index n, const Number* x,
+	GetHessianValueFunction hessianValueFunction = [](Index n, const Number* x,
 													Number objFactor, Index m, const Number* lambda,
 													Index numberElementsHessian) {
 		
@@ -197,29 +197,29 @@ TEST(optimizerTest, SolutionForZeroes) {
 
 	const numberVector xStartingPoint = {0, 0};
 
-	ObjectiveFunction objectiveFunction = [](Index n, const Number* x) {
+	EvaluateObjectiveFunction objectiveFunction = [](Index n, const Number* x) {
 		return 0;
 	};
 
-	GradientFunction gradientFunction = [](Index n, const Number* x) {
+	EvaluateGradientFunction gradientFunction = [](Index n, const Number* x) {
 		numberVector v = {0, 0};
 		return v;
 	};
 
-	ConstraintFunction constraintFunction = [](Index n, const Number* x, Index m) {
+	EvaluateConstraintFunction constraintFunction = [](Index n, const Number* x, Index m) {
 		numberVector v;
 		return v;
 	};
 
 	indexVector jacHessStructure;
 
-	JacobianValueFunction jacobianValueFunction = [](Index n, const Number* x, Index m,
+	GetJacobianValueFunction jacobianValueFunction = [](Index n, const Number* x, Index m,
 														Index numberElementsJacobian) {
 		numberVector v;
 		return v;
 	};
 
-	HessianValueFunction hessianValueFunction = [](Index n, const Number* x,
+	GetHessianValueFunction hessianValueFunction = [](Index n, const Number* x,
 													Number objFactor, Index m, const Number* lambda,
 													Index numberElementsHessian) {
 		numberVector v;

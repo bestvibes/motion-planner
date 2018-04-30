@@ -8,11 +8,11 @@ namespace trajectoryOptimization::optimizer {
 	using numberVector = std::vector<Number>;
 	using indexVector = std::vector<Index>;
 
-	using ObjectiveFunction = std::function<Number(Index n, const Number* x)>;
-	using GradientFunction = std::function<const numberVector(Index n, const Number* x)>;
-	using ConstraintFunction = std::function<const numberVector(Index n, const Number* x, Index m)>;
-	using JacobianValueFunction = std::function<const numberVector(Index n, const Number* x, Index m, Index numberElementsJacobians)>;
-	using HessianValueFunction = std::function<const numberVector(Index n, const Number* x, Number objFactor, Index m, const Number* lambda,
+	using EvaluateObjectiveFunction = std::function<Number(Index n, const Number* x)>;
+	using EvaluateGradientFunction = std::function<const numberVector(Index n, const Number* x)>;
+	using EvaluateConstraintFunction = std::function<const numberVector(Index n, const Number* x, Index m)>;
+	using GetJacobianValueFunction = std::function<const numberVector(Index n, const Number* x, Index m, Index numberElementsJacobians)>;
+	using GetHessianValueFunction = std::function<const numberVector(Index n, const Number* x, Number objFactor, Index m, const Number* lambda,
 										Index numberElementsHessian)>;
 	using FinalizerFunction = std::function<void(SolverReturn status, Index n, const Number* x, const Number* zLower, const Number* zUpper,
 										Index m, const Number* g, const Number* lambda,Number objValue,
@@ -31,15 +31,15 @@ namespace trajectoryOptimization::optimizer {
 							const numberVector& gUpperBounds,
 							const numberVector& xStartingPoint,
 							// z and lambda starting point not implemented
-							const ObjectiveFunction objectiveFunction,
-							const GradientFunction gradientFunction,
-							const ConstraintFunction constraintFunction,
+							const EvaluateObjectiveFunction objectiveFunction,
+							const EvaluateGradientFunction gradientFunction,
+							const EvaluateConstraintFunction constraintFunction,
 							const indexVector& jacobianStructureRows,
 							const indexVector& jacobianStructureCols,
-							const JacobianValueFunction jacobianValueFunction,
+							const GetJacobianValueFunction jacobianValueFunction,
 							const indexVector& hessianStructureRows,
 							const indexVector& hessianStructureCols,
-							const HessianValueFunction hessianValueFunction,
+							const GetHessianValueFunction hessianValueFunction,
 							const FinalizerFunction finalizerFunction) :
 			numberVariablesX(numberVariablesX),
 			numberConstraintsG(numberConstraintsG),
@@ -230,17 +230,17 @@ namespace trajectoryOptimization::optimizer {
 
 		const numberVector xStartingPoint;
 
-		const ObjectiveFunction objectiveFunction;
-		const GradientFunction gradientFunction;
-		const ConstraintFunction constraintFunction;
+		const EvaluateObjectiveFunction objectiveFunction;
+		const EvaluateGradientFunction gradientFunction;
+		const EvaluateConstraintFunction constraintFunction;
 
 		const indexVector jacobianStructureRows;
 		const indexVector jacobianStructureCols;
-		const JacobianValueFunction jacobianValueFunction;
+		const GetJacobianValueFunction jacobianValueFunction;
 		
 		const indexVector hessianStructureRows;
 		const indexVector hessianStructureCols;
-		const HessianValueFunction hessianValueFunction;
+		const GetHessianValueFunction hessianValueFunction;
 
 		const FinalizerFunction finalizerFunction;
   };
