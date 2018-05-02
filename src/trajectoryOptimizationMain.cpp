@@ -4,90 +4,183 @@
 //
 // $Id: block_main.cpp 2398 2013-10-19 18:08:59Z stefan $
 
-#include "IpIpoptApplication.hpp"
-#include "traj_nlp.hpp"
+#include "coin/IpIpoptApplication.hpp"
+#include "coin/IpSolveStatistics.hpp"
 #include <iostream>
 #include <algorithm>
 #include <functional>
-#include "hs071_func.hpp"
+#include "optimizer.hpp"
 
 using namespace Ipopt;
+using namespace trajectoryOptimization::optimizer;
 
 int main(int argv, char* argc[])
 {
-  // Create a new instance of your nlp
-  //  (use a SmartPtr, not raw)
-  // SmartPtr<TNLP> mynlp = new Traj_NLP("test");
-	//N is the dimension of x
-	const unsigned N = 4;
-	const unsigned  M = 2;
-	const int nnzj = hs071::nnzj;
-	std::vector<int> iRow = hs071::iRow;
-	std::vector<int> jCol = hs071::jCol;
+  const int numberVariablesX = 4;
+  const int numberConstraintsG = 2;
+  const int numberNonzeroJacobian = 8;
+  const int numberNonzeroHessian = 10;
 
-	assert(nnzj == iRow.size());
-	std::array<double, N> x_l;
-	x_l.fill(1);
-	// std::fill_n(x_l, N, 1);
+  const numberVector xLowerBounds = {1.0, 1.0, 1.0, 1.0};
+  const numberVector xUpperBounds = {5.0, 5.0, 5.0, 5.0};
+  const numberVector gLowerBounds = {25, 40.0};
+  const numberVector gUpperBounds = {2e19, 40.0};
 
-	std::array<double, N> x_u;
-	x_u.fill(5);
-	// std::fill_n(x_u, N, 5);
+  const numberVector xStartingPoint = {1.0, 5.0, 5.0, 1.0};
 
-	std::array<double, N> x_init = {{1.0, 5.0, 5.0, 1.0}};
+  EvaluateObjectiveFunction objectiveFunction = [](Index n, const Number* x) {
+    return x[0] * x[3] * (x[0] + x[1] + x[2]) + x[2];
+  };
 
-	std::array<double, M> g_l, g_u;
-	g_l[0] = 25; g_l[1] = 40; 
-	g_u[0] = 2e19; g_u[1] = 40;
+  EvaluateGradientFunction gradientFunction = [](Index n, const Number* x) {
+    numberVector gradF;
+    gradF.push_back(x[0] * x[3] + x[3] * (x[0] + x[1] + x[2]));
+    gradF.push_back(x[0] * x[3]);
+    gradF.push_back(x[0] * x[3] + 1);
+    gradF.push_back(x[0] * (x[0] + x[1] + x[2]));
+    return gradF;
+  };
 
-	auto eval_f = hs071::eval_f;
-	auto eval_grad_f = hs071::eval_grad_f;
-	auto eval_g = hs071::eval_g;
-	auto eval_jac_g = hs071::eval_jac_g;
+  EvaluateConstraintFunction constraintFunction = [](Index n, const Number* x, Index m) {
+    numberVector g;
+    g.push_back(x[0] * x[1] * x[2] * x[3]);
+    g.push_back(x[0]*x[0] + x[1]*x[1] + x[2]*x[2] + x[3]*x[3]);
+    return g;
+  };
 
-	SmartPtr<TNLP> mynlp =
-		new traj_opt::Traj_NLP<N, M>(nnzj, iRow, jCol, x_l, x_u, x_init,
-				g_l, g_u, eval_f, eval_grad_f, eval_g, eval_jac_g);
+  indexVector jacStructureRows = {0, 0, 0, 0, 1, 1, 1, 1};
+  indexVector jacStructureCols = {0, 1, 2, 3, 0, 1, 2 ,3};
 
-  // Create a new instance of IpoptApplication
-  //  (use a SmartPtr, not raw)
-  // We are using the factory, since this allows us to compile this
-  // example with an Ipopt Windows DLL
+  GetJacobianValueFunction jacobianValueFunction = [](Index n, const Number* x, Index m,
+                            Index numberElementsJacobian) {
+    numberVector values = {
+      x[1]*x[2]*x[3], // 0,0
+      x[0]*x[2]*x[3], // 0,1
+      x[0]*x[1]*x[3], // 0,2
+      x[0]*x[1]*x[2], // 0,3
+      2*x[0], // 1,0
+      2*x[1], // 1,1
+      2*x[2], // 1,2
+      2*x[3], // 1,3
+    };
+
+    return values;
+  };
+
+  indexVector hessianStructureRows;
+  indexVector hessianStructureCols;
+
+  for (Index row = 0; row < 4; row++) {
+    for (Index col = 0; col <= row; col++) {
+      hessianStructureRows.push_back(row);
+      hessianStructureCols.push_back(col);
+    }
+  }
+
+  GetHessianValueFunction hessianValueFunction = [](Index n, const Number* x,
+                          Number objFactor, Index m, const Number* lambda,
+                          Index numberElementsHessian) {
+    
+    numberVector values(numberNonzeroHessian);
+
+    values[0] = objFactor * (2*x[3]); // 0,0
+
+    values[1] = objFactor * (x[3]);   // 1,0
+    values[2] = 0;                     // 1,1
+
+    values[3] = objFactor * (x[3]);   // 2,0
+    values[4] = 0;                     // 2,1
+    values[5] = 0;                     // 2,2
+
+    values[6] = objFactor * (2*x[0] + x[1] + x[2]); // 3,0
+    values[7] = objFactor * (x[0]);                 // 3,1
+    values[8] = objFactor * (x[0]);                 // 3,2
+    values[9] = 0;                                   // 3,3
+
+
+    // add the portion for the first constraint
+    values[1] += lambda[0] * (x[2] * x[3]); // 1,0
+
+    values[3] += lambda[0] * (x[1] * x[3]); // 2,0
+    values[4] += lambda[0] * (x[0] * x[3]); // 2,1
+
+    values[6] += lambda[0] * (x[1] * x[2]); // 3,0
+    values[7] += lambda[0] * (x[0] * x[2]); // 3,1
+    values[8] += lambda[0] * (x[0] * x[1]); // 3,2
+
+    // add the portion for the second constraint
+    values[0] += lambda[1] * 2; // 0,0
+
+    values[2] += lambda[1] * 2; // 1,1
+
+    values[5] += lambda[1] * 2; // 2,2
+
+    values[9] += lambda[1] * 2; // 3,3
+
+    return values;
+  };
+
+  FinalizerFunction finalizerFunction = [](SolverReturn status, Index n, const Number* x,
+                        const Number* zLower, const Number* zUpper,
+                        Index m, const Number* g, const Number* lambda,
+                        Number objValue, const IpoptData* ipData,
+                        IpoptCalculatedQuantities* ipCalculatedQuantities) {
+    printf("\n\nSolution of the primal variables, x\n");
+    for (Index i=0; i<n; i++) {
+      printf("x[%d] = %e\n", i, x[i]); 
+    }
+
+    printf("\n\nSolution of the bound multipliers, z_L and z_U\n");
+    for (Index i=0; i<n; i++) {
+      printf("z_L[%d] = %e\n", i, zLower[i]); 
+    }
+    for (Index i=0; i<n; i++) {
+      printf("z_U[%d] = %e\n", i, zUpper[i]); 
+    }
+
+    printf("\n\nObjective value\n");
+    printf("f(x*) = %e\n", objValue); 
+  };
+
+  SmartPtr<TNLP> trajectoryOptimizer = new TrajectoryOptimizer(numberVariablesX,
+                        numberConstraintsG,
+                        numberNonzeroJacobian,
+                        numberNonzeroHessian,
+                        xLowerBounds,
+                        xUpperBounds,
+                        gLowerBounds,
+                        gUpperBounds,
+                        xStartingPoint,
+                        objectiveFunction,
+                        gradientFunction,
+                        constraintFunction,
+                        jacStructureRows,
+                        jacStructureCols,
+                        jacobianValueFunction,
+                        hessianStructureRows,
+                        hessianStructureCols,
+                        hessianValueFunction,
+                        finalizerFunction);
+
   SmartPtr<IpoptApplication> app = IpoptApplicationFactory();
-  app->RethrowNonIpoptException(true);
 
-  // Change some options
-  // Note: The following choices are only examples, they might not be
-  //       suitable for your optimization problem.
-  app->Options()->SetNumericValue("tol", 1e-7);
+  app->Options()->SetNumericValue("tol", 1e-9);
   app->Options()->SetStringValue("mu_strategy", "adaptive");
-  app->Options()->SetStringValue("output_file", "ipopt.out");
-	// turn this option on when no hessian approximation is available  
-  app->Options()->SetStringValue("hessian_approximation", "limited-memory");
-  // The following overwrites the default name (ipopt.opt) of the
-  // options file
-  // app->Options()->SetStringValue("option_file_name", "hs071.opt");
 
-  // Initialize the IpoptApplication and process the options
   ApplicationReturnStatus status;
   status = app->Initialize();
   if (status != Solve_Succeeded) {
     std::cout << std::endl << std::endl << "*** Error during initialization!" << std::endl;
-    return (int) status;
-  }
+  } else {
+    status = app->OptimizeTNLP(trajectoryOptimizer);
 
-  // Ask Ipopt to solve the problem
-  status = app->OptimizeTNLP(mynlp);
+    Number final_obj;
+    if (status == Solve_Succeeded) {
+      Index iter_count = app->Statistics()->IterationCount();
+      std::cout << std::endl << std::endl << "*** The problem solved in " << iter_count << " iterations!" << std::endl;
 
-  if (status == Solve_Succeeded) {
-    std::cout << std::endl << std::endl << "*** The problem solved!" << std::endl;
+      final_obj = app->Statistics()->FinalObjective();
+      std::cout << std::endl << std::endl << "*** The final value of the objective function is " << final_obj << '.' << std::endl;
+    }
   }
-  else {
-    std::cout << std::endl << std::endl << "*** The problem FAILED!" << std::endl;
-  }
-  // As the SmartPtrs go out of scope, the reference count
-  // will be decremented and the objects will automatically
-  // be deleted.
-
-  return (int) status;
 }

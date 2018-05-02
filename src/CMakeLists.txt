@@ -50,5 +50,13 @@ add_test(dynamicTest dynamicTest)
 add_test(utilitiesTest utilitiesTest)
 add_test(optimizerTest optimizerTest)
 
+add_executable(trajectoryOptimization trajectoryOptimizationMain.cpp)
+target_link_libraries(trajectoryOptimization PUBLIC trajectoryOptimizationLib)
+target_link_libraries(trajectoryOptimization PUBLIC
+	${IPOPT_LIBRARIES})
+target_include_directories(trajectoryOptimization PUBLIC
+	${Range3_INCLUDE_DIR}
+	${IPOPT_INCLUDE_DIR}
+	${MUJOCO_INCLUDE_DIR})
 
 
