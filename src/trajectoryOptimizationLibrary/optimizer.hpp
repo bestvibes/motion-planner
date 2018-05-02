@@ -1,5 +1,6 @@
 #pragma once
 #include "coin/IpTNLP.hpp"
+#include <cassert>
 
 namespace trajectoryOptimization::optimizer {
 
