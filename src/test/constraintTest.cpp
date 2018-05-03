@@ -8,7 +8,7 @@
 
 using namespace trajectoryOptimization::constraint;
 using namespace trajectoryOptimization::utilities;
-using namespace trajectoryOptimization::dynamics; 
+using namespace trajectoryOptimization::dynamic; 
 using namespace testing;
 using namespace ranges;
 
@@ -34,10 +34,10 @@ TEST_F(kinematicGoalConstraintTest, ZerosWhenReachingGoal){
 	const double* trajectoryPtr = trajectory.data();
 	auto getToKinematicGoalSquare =
 		GetToKinematicGoalSquare(numberOfPoints,
-														 pointDimension,
-														 kinematicDimension,
-														 goalTimeIndex,
-														 kinematicGoal);
+								 pointDimension,
+								 kinematicDimension,
+								 goalTimeIndex,
+								 kinematicGoal);
 
 	auto  toGoalSquares = getToKinematicGoalSquare(trajectoryPtr);
 	EXPECT_THAT(toGoalSquares, ElementsAre(0, 0, 0, 0));
@@ -50,16 +50,16 @@ TEST_F(kinematicGoalConstraintTest, increasingKinematicValues){
 	const double* trajectoryPtr = trajectory.data();
 	auto getToKinematicGoalSquare =
 		GetToKinematicGoalSquare(numberOfPoints,
-														 pointDimension,
-														 kinematicDimension,
-														 goalTimeIndex,
-														 kinematicGoal);
+								 pointDimension,
+								 kinematicDimension,
+								 goalTimeIndex,
+								 kinematicGoal);
 
 	auto  toGoalSquares = getToKinematicGoalSquare(trajectoryPtr);
 	EXPECT_THAT(toGoalSquares, ElementsAre(9, 16, 25, 36));
 }
 
-TEST_F(kinematicGoalConstraintTest, twoKinmaticGoalConstraints){
+TEST_F(kinematicGoalConstraintTest, twoKinematicGoalConstraints){
 	const unsigned goalOneTimeIndex = 0; 
 	const unsigned goalTwoTimeIndex = 1; 
 
@@ -70,21 +70,21 @@ TEST_F(kinematicGoalConstraintTest, twoKinmaticGoalConstraints){
 
 	auto getToGoalOneSquare =
 		GetToKinematicGoalSquare(numberOfPoints,
-														 pointDimension,
-														 kinematicDimension,
-														 goalOneTimeIndex,
-														 kinematicGoalOne);
+								 pointDimension,
+								 kinematicDimension,
+								 goalOneTimeIndex,
+								 kinematicGoalOne);
 
 	auto getToGoalTwoSquare =
 		GetToKinematicGoalSquare(numberOfPoints,
-														 pointDimension,
-														 kinematicDimension,
-														 goalTwoTimeIndex,
-														 kinematicGoalTwo);
+								 pointDimension,
+								 kinematicDimension,
+								 goalTwoTimeIndex,
+								 kinematicGoalTwo);
 
 
-	std::vector<constraintFunction> twoGoalConstraintFunctions =
-																	{getToGoalOneSquare, getToGoalTwoSquare};
+	std::vector<ConstraintFunction> twoGoalConstraintFunctions =
+												{getToGoalOneSquare, getToGoalTwoSquare};
 	auto stackConstriants = StackConstriants(twoGoalConstraintFunctions);
 
 	std::vector<double> squaredDistanceToTwoGoals =
@@ -120,33 +120,34 @@ class blockDynamic:public::Test{
 
 TEST_F(blockDynamic, oneTimeStepViolation){
 	const unsigned timeIndex = 0;
-	DynamicFunction blockDynamics = block;
+	DynamicFunction blockDynamics = BlockDynamics;
 	auto getKinematicViolation = GetKinematicViolation(blockDynamics,
-																										 pointDimension,
-																										 positionDimension,
-																										 timeIndex, 
-																										 dt);
+														pointDimension,
+														positionDimension,
+														timeIndex, 
+														dt);
 	std::vector<double> kinematicViolation = getKinematicViolation(trajectoryPtr);
 	EXPECT_THAT(kinematicViolation,
 							ElementsAre(-0.125, -0.25, -0.25, -0.5));
 }
 
 TEST_F(blockDynamic, twoTimeStepsViolation){
-	DynamicFunction blockDynamics = block;
+	const unsigned timeIndexZero = 0;
+	const unsigned timeIndexOne = 1;
+	DynamicFunction blockDynamics = BlockDynamics;
 	auto getTime0KinematicViolation = GetKinematicViolation(blockDynamics,
-																										 pointDimension,
-																										 positionDimension,
-																										 0, 
-																										 dt);
+															pointDimension,
+															positionDimension,
+															timeIndexZero, 
+															dt);
 
 	auto getTime1KinematicViolation = GetKinematicViolation(blockDynamics,
-																										 pointDimension,
-																										 positionDimension,
-																										 1, 
-																										 dt);
+															pointDimension,
+															positionDimension,
+															timeIndexOne, 
+															dt);
 
-	std::vector<constraintFunction> twoStepConstraintFunctions =
-																	{getTime0KinematicViolation,
+	std::vector<ConstraintFunction> twoStepConstraintFunctions = {getTime0KinematicViolation,
 																	getTime1KinematicViolation};
 
 	auto getStackConstriants = StackConstriants(twoStepConstraintFunctions);

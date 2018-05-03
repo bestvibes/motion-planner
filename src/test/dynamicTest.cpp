@@ -3,13 +3,13 @@
 #include "dynamic.hpp"
 
 using namespace testing;
-using namespace trajectoryOptimization::dynamics;
+using namespace trajectoryOptimization::dynamic;
 TEST(blockDynamic, controlZero){
 	dvector position = {1, 2};
 	dvector velocity = {0, 0};
 	dvector control =  {0, 0};
 
-	dvector acceleration = block(position, velocity, control); 
+	dvector acceleration = BlockDynamics(position, velocity, control); 
 	EXPECT_THAT(acceleration, ElementsAre(0, 0));
 }
 
@@ -18,7 +18,7 @@ TEST(blockDynamic, controlOneTwo){
 	dvector velocity = {1, 2};
 	dvector control =  {1, 2};
 
-	auto acceleration = block(position, velocity, control); 
+	auto acceleration = BlockDynamics(position, velocity, control); 
 	EXPECT_THAT(acceleration, ElementsAre(1, 2));
 }
 

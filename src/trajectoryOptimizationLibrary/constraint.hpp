@@ -5,13 +5,13 @@
 #include <functional>
 #include <range/v3/all.hpp>
 #include "dynamic.hpp"
-#include  "utilities.hpp"
+#include "utilities.hpp"
 
 namespace trajectoryOptimization::constraint{
 	using namespace ranges;
-	using namespace dynamics;
+	using namespace dynamic;
 	using namespace trajectoryOptimization::utilities;
-	using constraintFunction = std::function<std::vector<double>(const double*)>; 
+	using ConstraintFunction = std::function<std::vector<double>(const double*)>; 
 
 	class GetToKinematicGoalSquare{
 		const unsigned numberOfPoints;
@@ -23,126 +23,125 @@ namespace trajectoryOptimization::constraint{
 		int kinematicEndIndex;
 		public:
 		GetToKinematicGoalSquare(const unsigned numberOfPoints, 
-														 const unsigned pointDimension,
-														 const unsigned kinematicDimension,
-														 const unsigned goalTimeIndex, 
-														 const std::vector<double>& kinematicGoal):
-			numberOfPoints(numberOfPoints),
-			pointDimension(pointDimension),
-			kinematicDimension(kinematicDimension),
-			goalTimeIndex(goalTimeIndex),
-			kinematicGoal(kinematicGoal){
-			kinematicStartIndex = goalTimeIndex * pointDimension;
+								 const unsigned pointDimension,
+								 const unsigned kinematicDimension,
+								 const unsigned goalTimeIndex, 
+								 const std::vector<double>& kinematicGoal):
+									numberOfPoints(numberOfPoints),
+									pointDimension(pointDimension),
+									kinematicDimension(kinematicDimension),
+									goalTimeIndex(goalTimeIndex),
+									kinematicGoal(kinematicGoal) {
+				kinematicStartIndex = goalTimeIndex * pointDimension;
 		}
-		auto operator()(const double* trajectoryPtr) const{
+
+		auto operator()(const double* trajectoryPtr) const {
+
 			auto differentSquare = [](auto scaler1, auto scaler2)
-																{return std::pow(scaler1-scaler2 ,2);};
+										{return std::pow(scaler1-scaler2 ,2);};
 			std::vector<double> currentKinematics;
 			auto currentKinematicsStartPtr = trajectoryPtr+kinematicStartIndex;
 			std::copy_n(currentKinematicsStartPtr,
-									kinematicDimension,
-									std::back_inserter(currentKinematics));
+						kinematicDimension,
+						std::back_inserter(currentKinematics));
 
 			auto toKinematicGoalSquareRange =
 					 view::zip_with(differentSquare, kinematicGoal, currentKinematics);
 
-			std::vector<double> toKinematicGoalSquare =
-													yield_from(toKinematicGoalSquareRange);
+			std::vector<double> toKinematicGoalSquare = yield_from(toKinematicGoalSquareRange);
 
 			return toKinematicGoalSquare;
-			}
+		}
 	
 	};
 
 	class GetKinematicViolation{
-		DynamicFunction dynamics; 
+		const DynamicFunction dynamics; 
 		const unsigned pointDimension;
 		const unsigned positionDimension; 
 		const unsigned timeIndex;
 		const double dt;
-		unsigned velocityDimension;
-		unsigned controlDimension;
-		int currentKinematicsStartIndex; 
-		int nextKinematicsStartIndex; 
+		const unsigned velocityDimension;
+		const unsigned controlDimension;
+		const int currentKinematicsStartIndex; 
+		const int nextKinematicsStartIndex; 
 
 		public:
-			GetKinematicViolation(DynamicFunction dynamics,
-														const unsigned pointDimension,
-														const unsigned positionDimension,
-														const unsigned timeIndex,
-														const double dt):
-				dynamics(dynamics),
-				pointDimension(pointDimension),
-				positionDimension(positionDimension),
-				timeIndex(timeIndex),
-				dt(dt){
-					// assert (kinematicDimension/2 == 0);
-					velocityDimension = positionDimension;
-					controlDimension = pointDimension - positionDimension- velocityDimension;
-					currentKinematicsStartIndex = timeIndex*pointDimension; 
-					nextKinematicsStartIndex = (timeIndex+1)*pointDimension;
-				}
+			GetKinematicViolation(const DynamicFunction dynamics,
+									const unsigned pointDimension,
+									const unsigned positionDimension,
+									const unsigned timeIndex,
+									const double dt):
+										dynamics(dynamics),
+										pointDimension(pointDimension),
+										positionDimension(positionDimension),
+										timeIndex(timeIndex),
+										dt(dt),
+										velocityDimension(positionDimension),
+										controlDimension(pointDimension - positionDimension - velocityDimension),
+										currentKinematicsStartIndex(timeIndex * pointDimension),
+										nextKinematicsStartIndex((timeIndex+1) * pointDimension) {}
 
-			std::vector<double> operator () (const double* trajectoryPointer){
+			std::vector<double> operator () (const double* trajectoryPointer) {
 				auto nowPoint = getTrajectoryPoint(trajectoryPointer,
-																					 timeIndex,
-																					 pointDimension);
+													timeIndex,
+													pointDimension);
 				auto nextPoint = getTrajectoryPoint(trajectoryPointer,
-																						timeIndex+1,
-																						pointDimension);
+													timeIndex+1,
+													pointDimension);
 
 				const auto& [nowPosition, nowVelocity, nowControl] = 
 					getPointPositionVelocityControl(nowPoint,
-																					positionDimension,
-																					velocityDimension,
-																					controlDimension);
+													positionDimension,
+													velocityDimension,
+													controlDimension);
 
 				const auto& [nextPosition, nextVelocity, nextControl] = 
 					getPointPositionVelocityControl(nextPoint,
-																					positionDimension,
-																					velocityDimension,
-																					controlDimension);
+													positionDimension,
+													velocityDimension,
+													controlDimension);
+
+				auto average = [](auto val1, auto val2) {return 0.5 * (val1 + val2);};
 				auto getViolation = [=](auto now, auto next, auto dNow, auto dNext)
-						{return next - now - 0.5*dt*(dNow+dNext);}; 
+						{return (next - now) - average(dNow, dNext)*dt;};
 
 				auto positionViolation = view::zip_with(getViolation,
-																								nowPosition,
-																								nextPosition,
-																								nowVelocity,
-																								nextVelocity) ;
+														nowPosition,
+														nextPosition,
+														nowVelocity,
+														nextVelocity) ;
 
 				auto nowAcceleration = dynamics(nowPosition, nowVelocity, nowControl);
 				auto nextAcceleration = dynamics(nextPosition, nextVelocity, nextControl);
 
 				auto velocityViolation = view::zip_with(getViolation,
-																								nowVelocity,
-																								nextVelocity,
-																								nowAcceleration,
-																								nextAcceleration);
+														nowVelocity,
+														nextVelocity,
+														nowAcceleration,
+														nextAcceleration);
 
-				std::vector<double> kinematicViolation = yield_from(view::concat(
-																								 positionViolation,
-																								 velocityViolation));
+				std::vector<double> kinematicViolation = yield_from(view::concat(positionViolation,
+																			 		velocityViolation));
 				return kinematicViolation;
 			};
 	};
 
 	class StackConstriants{
-		const std::vector<constraintFunction>& constraintFunctions;
+		const std::vector<ConstraintFunction>& constraintFunctions;
 		public:
-			StackConstriants(const std::vector<constraintFunction>& constraintFunctions):
-				constraintFunctions(constraintFunctions){};
+			StackConstriants(const std::vector<ConstraintFunction>& constraintFunctions):
+				constraintFunctions(constraintFunctions) {};
 
-			std::vector<double> operator()(const double* trajectoryPtr){
-
+			std::vector<double> operator()(const double* trajectoryPtr) {
 				std::vector<double> stackedConstriants;
-				for (auto aFunction: constraintFunctions){
+				for (auto aFunction: constraintFunctions) {
 					auto constraints = aFunction(trajectoryPtr);
 					std::copy(std::begin(constraints), std::end(constraints),
 										std::back_inserter(stackedConstriants));
 				}
-			return stackedConstriants;
-		}
+				return stackedConstriants;
+			}
 	};
 }
 

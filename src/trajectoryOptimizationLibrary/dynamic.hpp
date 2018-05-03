@@ -7,24 +7,24 @@
 #include <functional>
 #include <range/v3/view.hpp>
 
-namespace trajectoryOptimization::dynamics {
+namespace trajectoryOptimization::dynamic {
 	using dvector = std::vector<double>; 
 	using DynamicFunction = std::function<dvector(const dvector&,
-																								const dvector&,
-																								const dvector&)>;
+													const dvector&,
+													const dvector&)>;
 	using namespace ranges;
 
-	dvector block(const dvector& position,
-								const dvector& velocity,
-								const dvector& control){
-				assert(position.size() == velocity.size());  
-				return control;
+	dvector BlockDynamics(const dvector& position,
+							const dvector& velocity,
+							const dvector& control){
+		assert(position.size() == velocity.size());  
+		return control;
 	}
 
 	std::tuple<dvector, dvector> stepForward(const dvector& position,
-																			 const dvector& velocity,
-																			 const dvector& acceleration,
-																			 const double dt) {
+											 const dvector& velocity,
+											 const dvector& acceleration,
+											 const double dt) {
 		assert (position.size() == velocity.size()); 
 		assert (position.size() == acceleration.size()); 
 
