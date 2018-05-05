@@ -6,7 +6,7 @@
 
 namespace trajectoryOptimization::cost{
 
-	class GetControlSquareSum{
+	class GetControlSquareSum {
 		const unsigned numberOfPoints;
 		const unsigned pointDimension;
 		const unsigned controlDimension;
@@ -47,7 +47,7 @@ namespace trajectoryOptimization::cost{
 			}  
 	};
 
-	class GetControlSquareSumGradient{
+	class GetControlSquareSumGradient {
 		const unsigned numberOfPoints;
 		const unsigned pointDimension;
 		const unsigned controlDimension;
