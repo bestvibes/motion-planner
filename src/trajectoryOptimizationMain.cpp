@@ -124,16 +124,8 @@ int main(int argv, char* argc[])
   jacStructureCols = view::concat(jacStructureCols, constraintGradientCols);
   currentConstraintIndex += numberConstraints;
 
-  // printf("sizes: %ld, %ld\n", jacStructureRows.size(), jacStructureCols.size());
-  // for (int i = 0; i < jacStructureRows.size(); i++) {
-  //   printf("%d %d\n", jacStructureRows[i], jacStructureCols[i]);
-  // }
-
-  // exit(1);
-
   const int numberConstraintsG = *std::max_element(jacStructureRows.begin(), jacStructureRows.end()) + 1;
 
-  //(kinematicDimensions * numTimePoints) + (2 * kinematicDimensions); // start + goal
   const numberVector gLowerBounds(numberConstraintsG);
   const numberVector gUpperBounds(numberConstraintsG);
   const int numberNonzeroJacobian = jacStructureRows.size();
