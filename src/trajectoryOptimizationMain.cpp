@@ -152,7 +152,7 @@ int main(int argv, char* argc[])
   // }
 
   GetHessianValueFunction hessianValueFunction = [](Index n, const Number* x,
-                          Number objFactor, Index m, const Number* lambda,
+                          const Number objFactor, Index m, const Number* lambda,
                           Index numberElementsHessian) {
     
     numberVector values(numberNonzeroHessian);

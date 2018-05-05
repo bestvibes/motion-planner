@@ -13,7 +13,7 @@ namespace trajectoryOptimization::optimizer {
 	using EvaluateGradientFunction = std::function<const numberVector(Index n, const Number* x)>;
 	using EvaluateConstraintFunction = std::function<const numberVector(Index n, const Number* x, Index m)>;
 	using GetJacobianValueFunction = std::function<const numberVector(Index n, const Number* x, Index m, Index numberElementsJacobians)>;
-	using GetHessianValueFunction = std::function<const numberVector(Index n, const Number* x, Number objFactor, Index m, const Number* lambda,
+	using GetHessianValueFunction = std::function<const numberVector(Index n, const Number* x, const Number objFactor, Index m, const Number* lambda,
 										Index numberElementsHessian)>;
 	using FinalizerFunction = std::function<void(SolverReturn status, Index n, const Number* x, const Number* zLower, const Number* zUpper,
 										Index m, const Number* g, const Number* lambda,Number objValue,
