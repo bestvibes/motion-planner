@@ -9,73 +9,155 @@
 #include <iostream>
 #include <algorithm>
 #include <functional>
+#include <range/v3/view.hpp>
+
+#include "constraint.hpp"
+#include "cost.hpp"
+#include "dynamic.hpp"
 #include "optimizer.hpp"
+#include "utilities.hpp"
 
 using namespace Ipopt;
 using namespace trajectoryOptimization::optimizer;
+using namespace ranges;
+using namespace trajectoryOptimization;
 
 int main(int argv, char* argc[])
 {
-  const int numberVariablesX = 4;
-  const int numberConstraintsG = 2;
-  const int numberNonzeroJacobian = 8;
-  const int numberNonzeroHessian = 10;
+  const int worldDimension = 1;
+  // pos, vel, acc (control)
+  const int kinematicDimensions = worldDimension * 2;
+  const int controlDimensions = worldDimension;
+  const int timePointDimension = kinematicDimensions + controlDimensions;
+  const int numTimePoints = 4;
+  const int timeStepSize = 1;
 
-  const numberVector xLowerBounds = {1.0, 1.0, 1.0, 1.0};
-  const numberVector xUpperBounds = {5.0, 5.0, 5.0, 5.0};
-  const numberVector gLowerBounds = {25, 40.0};
-  const numberVector gUpperBounds = {2e19, 40.0};
+  const dynamic::DynamicFunction blockDynamics = dynamic::BlockDynamics;
 
-  const numberVector xStartingPoint = {1.0, 5.0, 5.0, 1.0};
+  const int numberVariablesX = timePointDimension * numTimePoints;
+  const int numberNonzeroHessian = 0;
 
-  EvaluateObjectiveFunction objectiveFunction = [](Index n, const Number* x) {
-    return x[0] * x[3] * (x[0] + x[1] + x[2]) + x[2];
+  const int startTimeIndex = 0;
+  const numberVector startPoint = {0, 0, 0}; //TODO: control ignored?
+  const int goalTimeIndex = numTimePoints - 1;
+  const numberVector goalPoint = {5, 0, 0};
+
+  numberVector timePointLowerBounds = {-5, -5, -5};
+  numberVector timePointUpperBounds = {5, 5, 5};
+
+  const numberVector xLowerBounds = utilities::createTrajectoryWithIdenticalPoints(numTimePoints, timePointLowerBounds);
+  const numberVector xUpperBounds = utilities::createTrajectoryWithIdenticalPoints(numTimePoints, timePointUpperBounds);
+
+  numberVector xStartingPoint(numberVariablesX);
+
+  const auto costFunction = cost::GetControlSquareSum(numTimePoints, timePointDimension, controlDimensions);
+  EvaluateObjectiveFunction objectiveFunction = [costFunction](Index n, const Number* x) {
+    return costFunction(x);
   };
 
-  EvaluateGradientFunction gradientFunction = [](Index n, const Number* x) {
-    numberVector gradF;
-    gradF.push_back(x[0] * x[3] + x[3] * (x[0] + x[1] + x[2]));
-    gradF.push_back(x[0] * x[3]);
-    gradF.push_back(x[0] * x[3] + 1);
-    gradF.push_back(x[0] * (x[0] + x[1] + x[2]));
-    return gradF;
+  const auto costGradientFunction = cost::GetControlSquareSumGradient(numTimePoints, timePointDimension, controlDimensions);
+  EvaluateGradientFunction gradientFunction = [costGradientFunction](Index n, const Number* x) {
+    return costGradientFunction(x);
   };
 
-  EvaluateConstraintFunction constraintFunction = [](Index n, const Number* x, Index m) {
-    numberVector g;
-    g.push_back(x[0] * x[1] * x[2] * x[3]);
-    g.push_back(x[0]*x[0] + x[1]*x[1] + x[2]*x[2] + x[3]*x[3]);
-    return g;
-  };
+  unsigned numberConstraints;
+  std::vector<int> constraintGradientRows, constraintGradientCols;
+  std::vector<constraint::ConstraintFunction> constraints;
+  std::vector<constraint::ConstraintGradientFunction> constraintGradients;
+  std::vector<int> jacStructureRows, jacStructureCols;
+  unsigned currentConstraintIndex = 0;
+  constraints.push_back(constraint::GetToKinematicGoalSquare(numTimePoints,
+                                                              timePointDimension,
+                                                              kinematicDimensions,
+                                                              startTimeIndex,
+                                                              startPoint));
+  constraintGradients.push_back(constraint::GetToKinematicGoalSquareGradient(numTimePoints,
+                                                              timePointDimension,
+                                                              kinematicDimensions,
+                                                              startTimeIndex,
+                                                              startPoint));
+  std::tie(numberConstraints, constraintGradientRows, constraintGradientCols) =
+                    constraint::getToKinematicGoalSquareGradientIndices(currentConstraintIndex,
+                                                                        timePointDimension,
+                                                                        kinematicDimensions,
+                                                                        startTimeIndex);
+  jacStructureRows = view::concat(jacStructureRows, constraintGradientRows);
+  jacStructureCols = view::concat(jacStructureCols, constraintGradientCols);
+  currentConstraintIndex += numberConstraints;
 
-  indexVector jacStructureRows = {0, 0, 0, 0, 1, 1, 1, 1};
-  indexVector jacStructureCols = {0, 1, 2, 3, 0, 1, 2 ,3};
-
-  GetJacobianValueFunction jacobianValueFunction = [](Index n, const Number* x, Index m,
-                            Index numberElementsJacobian) {
-    numberVector values = {
-      x[1]*x[2]*x[3], // 0,0
-      x[0]*x[2]*x[3], // 0,1
-      x[0]*x[1]*x[3], // 0,2
-      x[0]*x[1]*x[2], // 0,3
-      2*x[0], // 1,0
-      2*x[1], // 1,1
-      2*x[2], // 1,2
-      2*x[3], // 1,3
-    };
-
-    return values;
-  };
-
-  indexVector hessianStructureRows;
-  indexVector hessianStructureCols;
-
-  for (Index row = 0; row < 4; row++) {
-    for (Index col = 0; col <= row; col++) {
-      hessianStructureRows.push_back(row);
-      hessianStructureCols.push_back(col);
-    }
+  for (int timeIndex = 0; timeIndex < numTimePoints - 1; timeIndex++) {
+    constraints.push_back(constraint::GetKinematicViolation(blockDynamics,
+                                                            timePointDimension,
+                                                            worldDimension,
+                                                            timeIndex,
+                                                            timeStepSize));
+    constraintGradients.push_back(constraint::GetKinematicViolationGradient(blockDynamics,
+                                                                            timePointDimension,
+                                                                            worldDimension,
+                                                                            timeIndex,
+                                                                            timeStepSize));
+    std::tie(numberConstraints, constraintGradientRows, constraintGradientCols) =
+                    constraint::getKinematicViolationGradientIndices(currentConstraintIndex,
+                                                                        timePointDimension,
+                                                                        worldDimension,
+                                                                        timeIndex);
+    jacStructureRows = view::concat(jacStructureRows, constraintGradientRows);
+    jacStructureCols = view::concat(jacStructureCols, constraintGradientCols);
+    currentConstraintIndex += numberConstraints;
   }
+  constraints.push_back(constraint::GetToKinematicGoalSquare(numTimePoints,
+                                                              timePointDimension,
+                                                              kinematicDimensions,
+                                                              goalTimeIndex,
+                                                              goalPoint));
+  constraintGradients.push_back(constraint::GetToKinematicGoalSquareGradient(numTimePoints,
+                                                              timePointDimension,
+                                                              kinematicDimensions,
+                                                              goalTimeIndex,
+                                                              goalPoint));
+  std::tie(numberConstraints, constraintGradientRows, constraintGradientCols) =
+                    constraint::getToKinematicGoalSquareGradientIndices(currentConstraintIndex,
+                                                                        timePointDimension,
+                                                                        kinematicDimensions,
+                                                                        goalTimeIndex);
+  jacStructureRows = view::concat(jacStructureRows, constraintGradientRows);
+  jacStructureCols = view::concat(jacStructureCols, constraintGradientCols);
+  currentConstraintIndex += numberConstraints;
+
+  // printf("sizes: %ld, %ld\n", jacStructureRows.size(), jacStructureCols.size());
+  // for (int i = 0; i < jacStructureRows.size(); i++) {
+  //   printf("%d %d\n", jacStructureRows[i], jacStructureCols[i]);
+  // }
+
+  // exit(1);
+
+  const int numberConstraintsG = *std::max_element(jacStructureRows.begin(), jacStructureRows.end()) + 1;
+
+  //(kinematicDimensions * numTimePoints) + (2 * kinematicDimensions); // start + goal
+  const numberVector gLowerBounds(numberConstraintsG);
+  const numberVector gUpperBounds(numberConstraintsG);
+  const int numberNonzeroJacobian = jacStructureRows.size();
+
+  const constraint::ConstraintFunction stackedConstraints = constraint::StackConstriants(constraints);
+  EvaluateConstraintFunction constraintFunction = [stackedConstraints](Index n, const Number* x, Index m) {
+    return stackedConstraints(x);
+  };
+
+  const constraint::ConstraintGradientFunction stackedConstraintGradients = constraint::StackConstriantGradients(constraintGradients);
+  GetJacobianValueFunction jacobianValueFunction = [stackedConstraintGradients](Index n, const Number* x, Index m,
+                            Index numberElementsJacobian) {
+    return stackedConstraintGradients(x);
+  };
+
+  indexVector hessianStructureRows(numberNonzeroHessian);
+  indexVector hessianStructureCols(numberNonzeroHessian);
+
+  // for (Index row = 0; row < 4; row++) {
+  //   for (Index col = 0; col <= row; col++) {
+  //     hessianStructureRows.push_back(row);
+  //     hessianStructureCols.push_back(col);
+  //   }
+  // }
 
   GetHessianValueFunction hessianValueFunction = [](Index n, const Number* x,
                           Number objFactor, Index m, const Number* lambda,
@@ -83,39 +165,39 @@ int main(int argv, char* argc[])
     
     numberVector values(numberNonzeroHessian);
 
-    values[0] = objFactor * (2*x[3]); // 0,0
+    // values[0] = objFactor * (2*x[3]); // 0,0
 
-    values[1] = objFactor * (x[3]);   // 1,0
-    values[2] = 0;                     // 1,1
+    // values[1] = objFactor * (x[3]);   // 1,0
+    // values[2] = 0;                     // 1,1
 
-    values[3] = objFactor * (x[3]);   // 2,0
-    values[4] = 0;                     // 2,1
-    values[5] = 0;                     // 2,2
+    // values[3] = objFactor * (x[3]);   // 2,0
+    // values[4] = 0;                     // 2,1
+    // values[5] = 0;                     // 2,2
 
-    values[6] = objFactor * (2*x[0] + x[1] + x[2]); // 3,0
-    values[7] = objFactor * (x[0]);                 // 3,1
-    values[8] = objFactor * (x[0]);                 // 3,2
-    values[9] = 0;                                   // 3,3
+    // values[6] = objFactor * (2*x[0] + x[1] + x[2]); // 3,0
+    // values[7] = objFactor * (x[0]);                 // 3,1
+    // values[8] = objFactor * (x[0]);                 // 3,2
+    // values[9] = 0;                                   // 3,3
 
 
-    // add the portion for the first constraint
-    values[1] += lambda[0] * (x[2] * x[3]); // 1,0
+    // // add the portion for the first constraint
+    // values[1] += lambda[0] * (x[2] * x[3]); // 1,0
 
-    values[3] += lambda[0] * (x[1] * x[3]); // 2,0
-    values[4] += lambda[0] * (x[0] * x[3]); // 2,1
+    // values[3] += lambda[0] * (x[1] * x[3]); // 2,0
+    // values[4] += lambda[0] * (x[0] * x[3]); // 2,1
 
-    values[6] += lambda[0] * (x[1] * x[2]); // 3,0
-    values[7] += lambda[0] * (x[0] * x[2]); // 3,1
-    values[8] += lambda[0] * (x[0] * x[1]); // 3,2
+    // values[6] += lambda[0] * (x[1] * x[2]); // 3,0
+    // values[7] += lambda[0] * (x[0] * x[2]); // 3,1
+    // values[8] += lambda[0] * (x[0] * x[1]); // 3,2
 
-    // add the portion for the second constraint
-    values[0] += lambda[1] * 2; // 0,0
+    // // add the portion for the second constraint
+    // values[0] += lambda[1] * 2; // 0,0
 
-    values[2] += lambda[1] * 2; // 1,1
+    // values[2] += lambda[1] * 2; // 1,1
 
-    values[5] += lambda[1] * 2; // 2,2
+    // values[5] += lambda[1] * 2; // 2,2
 
-    values[9] += lambda[1] * 2; // 3,3
+    // values[9] += lambda[1] * 2; // 3,3
 
     return values;
   };
