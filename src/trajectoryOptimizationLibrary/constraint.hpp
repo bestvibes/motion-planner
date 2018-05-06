@@ -13,7 +13,8 @@ namespace trajectoryOptimization::constraint {
 	using namespace dynamic;
 	using namespace trajectoryOptimization::utilities;
 	using ConstraintFunction = std::function<std::vector<double>(const double*)>;
-	using ConstraintGradientFunction = std::function<std::vector<double>(const double*)>; 
+	using ConstraintGradientFunction = std::function<std::vector<double>(const double*)>;
+	using ConstraintGradientIndicesFunction = std::function<std::tuple<unsigned, std::vector<int>, std::vector<int>>(const unsigned)>;
 
 	class GetToKinematicGoalSquare{
 		const unsigned numberOfPoints;
@@ -54,7 +55,7 @@ namespace trajectoryOptimization::constraint {
 		}
 	};
 
-	class GetToKinematicGoalSquareGradient{
+	class GetToKinematicGoalSquareGradient {
 		const unsigned numberOfPoints;
 		const unsigned pointDimension; 
 		const unsigned kinematicDimension;
@@ -93,16 +94,24 @@ namespace trajectoryOptimization::constraint {
 		}
 	};
 
-	std::tuple<unsigned, std::vector<int>, std::vector<int>> getToKinematicGoalSquareGradientIndices(const unsigned constraintIndex,
-																										const unsigned pointDimension,
-																										const unsigned kinematicDimension,
-																										const unsigned goalTimeIndex) {
-		const unsigned numberConstraints = kinematicDimension;
-		const unsigned kinematicStartIndex = goalTimeIndex * pointDimension;
-		const auto jacobianRowIndices = view::ints(constraintIndex, constraintIndex + kinematicDimension);
-		const auto jacobianColIndices = view::ints(kinematicStartIndex, kinematicStartIndex + kinematicDimension);
-		return {numberConstraints, jacobianRowIndices, jacobianColIndices};
-	}
+	class GetToKinematicGoalSquareGradientIndices {
+		const unsigned numberConstraints;
+		const unsigned kinematicDimension;
+		const unsigned kinematicStartIndex;
+		public:
+		GetToKinematicGoalSquareGradientIndices(const unsigned pointDimension,
+														const unsigned kinematicDimension,
+														const unsigned goalTimeIndex) :
+															numberConstraints(kinematicDimension),
+															kinematicDimension(kinematicDimension),
+															kinematicStartIndex(goalTimeIndex * pointDimension) {}
+
+		std::tuple<unsigned, std::vector<int>, std::vector<int>> operator()(const unsigned constraintIndex) {
+			const auto jacobianRowIndices = view::ints(constraintIndex, constraintIndex + kinematicDimension);
+			const auto jacobianColIndices = view::ints(kinematicStartIndex, kinematicStartIndex + kinematicDimension);
+			return {numberConstraints, jacobianRowIndices, jacobianColIndices};
+		}
+	};
 
 	class GetKinematicViolation {
 		const DynamicFunction dynamics; 
@@ -255,34 +264,44 @@ namespace trajectoryOptimization::constraint {
 			};
 	};
 
-	std::tuple<unsigned, std::vector<int>, std::vector<int>> getKinematicViolationGradientIndices(const unsigned constraintIndex,
-																									const unsigned pointDimension,
-																									const unsigned positionDimension,
-																									const unsigned timeIndex) {
-		const unsigned velocityDimension = positionDimension;
-		const unsigned kinematicDimension = positionDimension + velocityDimension;
-
-		const unsigned numberConstraints = kinematicDimension;
+	class GetKinematicViolationGradientIndices {
 		const unsigned numberDerivatives = 4;
-		const unsigned kinematicStartIndex = timeIndex * pointDimension;
+		const unsigned pointDimension;
+		const unsigned positionDimension;
+		unsigned numberConstraints;
+		unsigned kinematicDimension;
+		const unsigned kinematicStartIndex;
+		public:
+		GetKinematicViolationGradientIndices(const unsigned pointDimension,
+												const unsigned positionDimension,
+												const unsigned timeIndex) :
+															pointDimension(pointDimension),
+															positionDimension(positionDimension),
+															kinematicStartIndex(timeIndex * pointDimension) {
+																const unsigned velocityDimension = positionDimension;
+																kinematicDimension = positionDimension + velocityDimension;
+																numberConstraints = kinematicDimension;
+															}
 
-		const std::vector<int> jacobianRowIndices = view::for_each(view::ints(constraintIndex, constraintIndex + kinematicDimension),
-														[](auto index) {return yield_from(view::repeat_n(index, numberDerivatives));});
-		std::vector<int> jacobianColIndices;
-		for (unsigned i = kinematicStartIndex; i < kinematicStartIndex + kinematicDimension; i++) {
-			const unsigned now = i;
-			const unsigned dNow = i + positionDimension;
-			const unsigned next = i + pointDimension;
-			const unsigned dNext = i + pointDimension + positionDimension;
+		std::tuple<unsigned, std::vector<int>, std::vector<int>> operator()(const unsigned constraintIndex) {
+			const std::vector<int> jacobianRowIndices = view::for_each(view::ints(constraintIndex, constraintIndex + kinematicDimension),
+														[=](auto index) {return yield_from(view::repeat_n(index, numberDerivatives));});
+			std::vector<int> jacobianColIndices;
+			for (unsigned i = kinematicStartIndex; i < kinematicStartIndex + kinematicDimension; i++) {
+				const unsigned now = i;
+				const unsigned dNow = i + positionDimension;
+				const unsigned next = i + pointDimension;
+				const unsigned dNext = i + pointDimension + positionDimension;
 
-			jacobianColIndices.push_back(now);
-			jacobianColIndices.push_back(dNow);
-			jacobianColIndices.push_back(next);
-			jacobianColIndices.push_back(dNext);
+				jacobianColIndices.push_back(now);
+				jacobianColIndices.push_back(dNow);
+				jacobianColIndices.push_back(next);
+				jacobianColIndices.push_back(dNext);
+			}
+
+			return {numberConstraints, jacobianRowIndices, jacobianColIndices};
 		}
-
-		return {numberConstraints, jacobianRowIndices, jacobianColIndices};
-	}
+	};
 
 	class StackConstriants{
 		const std::vector<ConstraintFunction>& constraintFunctions;
@@ -315,6 +334,33 @@ namespace trajectoryOptimization::constraint {
 										std::back_inserter(stackedConstriantGradients));
 				}
 				return stackedConstriantGradients;
+			}
+	};
+
+	class StackConstriantGradientIndices {
+		const std::vector<ConstraintGradientIndicesFunction>& constraintGradientIndicesFunctions;
+		public:
+			StackConstriantGradientIndices(const std::vector<ConstraintGradientIndicesFunction>& constraintGradientIndicesFunctions):
+				constraintGradientIndicesFunctions(constraintGradientIndicesFunctions) {};
+
+			std::tuple<unsigned, std::vector<int>, std::vector<int>> operator()(const unsigned constraintIndex) {
+				unsigned currentConstraintIndex = 0;
+				unsigned numberConstraints;
+  				std::vector<int> constraintGradientRows, constraintGradientCols;
+
+  				int totalNumberConstraints = constraintIndex;
+				std::vector<int> jacStructureRows, jacStructureCols;
+				for (auto aFunction: constraintGradientIndicesFunctions) {
+					std::tie(numberConstraints, constraintGradientRows, constraintGradientCols) =
+																	aFunction(totalNumberConstraints);
+
+					totalNumberConstraints += numberConstraints;
+					std::copy(std::begin(constraintGradientRows), std::end(constraintGradientRows),
+										std::back_inserter(jacStructureRows));
+					std::copy(std::begin(constraintGradientCols), std::end(constraintGradientCols),
+										std::back_inserter(jacStructureCols));
+				}
+				return {totalNumberConstraints, jacStructureRows, jacStructureCols};
 			}
 	};
 }
