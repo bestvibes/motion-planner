@@ -272,6 +272,7 @@ TEST(optimizerTest, SolutionForZeroes) {
 
 	app->Options()->SetNumericValue("tol", 1e-9);
 	app->Options()->SetStringValue("mu_strategy", "adaptive");
+	app->Options()->SetStringValue("hessian_approximation", "limited-memory");
 
 	ApplicationReturnStatus status;
 	status = app->Initialize();

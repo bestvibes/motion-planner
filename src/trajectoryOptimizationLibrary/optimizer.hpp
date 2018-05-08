@@ -177,6 +177,10 @@ namespace trajectoryOptimization::optimizer {
 			assert(m == numberConstraintsG);
 			assert(nele_hess == numberNonzeroHessian);
 
+			if (numberNonzeroHessian == 0) {
+				return false;
+			}
+
 			if (values == NULL) {
 				std::copy(hessianStructureRows.begin(), hessianStructureRows.end(), iRow);
 				std::copy(hessianStructureCols.begin(), hessianStructureCols.end(), jCol);
