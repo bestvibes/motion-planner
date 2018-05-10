@@ -115,17 +115,14 @@ int main(int argv, char* argc[])
   };
 
 
-  const int numberNonzeroHessian = 4;
-  indexVector hessianStructureRows = {0, 1, 2, 3};
-  indexVector hessianStructureCols = {2, 5, 8, 11};
+  const int numberNonzeroHessian = 0;
+  indexVector hessianStructureRows;
+  indexVector hessianStructureCols;
 
   GetHessianValueFunction hessianValueFunction = [](Index n, const Number* x,
                           const Number objFactor, Index m, const Number* lambda,
                           Index numberElementsHessian) {
-
-    //TODO: account for constraints and move this logic to appropriate places
-    numberVector values(numberNonzeroHessian, objFactor * 2);
-
+    numberVector values;
     return values;
   };
 
@@ -175,6 +172,7 @@ int main(int argv, char* argc[])
 
   app->Options()->SetNumericValue("tol", 1e-9);
   app->Options()->SetStringValue("mu_strategy", "adaptive");
+  app->Options()->SetStringValue("hessian_approximation", "limited-memory");
 
   ApplicationReturnStatus status;
   status = app->Initialize();
