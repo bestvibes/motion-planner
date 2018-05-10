@@ -26,9 +26,9 @@ int main(int argv, char* argc[])
 {
   const int worldDimension = 1;
   // pos, vel, acc (control)
-  const int kinematicDimensions = worldDimension * 2;
+  const int kinematicDimension = worldDimension * 2;
   const int controlDimensions = worldDimension;
-  const int timePointDimension = kinematicDimensions + controlDimensions;
+  const int timePointDimension = kinematicDimension + controlDimensions;
   const int numTimePoints = 4;
   const int timeStepSize = 1;
 
@@ -62,48 +62,39 @@ int main(int argv, char* argc[])
   std::vector<constraint::ConstraintFunction> constraints;
   std::vector<constraint::ConstraintGradientFunction> constraintGradients;
   std::vector<constraint::ConstraintGradientIndicesFunction> constraintGradientIndices;
-  constraints.push_back(constraint::GetToKinematicGoalSquare(numTimePoints,
-                                                              timePointDimension,
-                                                              kinematicDimensions,
-                                                              startTimeIndex,
-                                                              startPoint));
-  constraintGradients.push_back(constraint::GetToKinematicGoalSquareGradient(numTimePoints,
-                                                              timePointDimension,
-                                                              kinematicDimensions,
-                                                              startTimeIndex,
-                                                              startPoint));
-  constraintGradientIndices.push_back(constraint::GetToKinematicGoalSquareGradientIndices(timePointDimension,
-                                                                        kinematicDimensions,
-                                                                        startTimeIndex));
 
-  for (int timeIndex = 0; timeIndex < numTimePoints - 1; timeIndex++) {
-    constraints.push_back(constraint::GetKinematicViolation(blockDynamics,
-                                                            timePointDimension,
-                                                            worldDimension,
-                                                            timeIndex,
-                                                            timeStepSize));
-    constraintGradients.push_back(constraint::GetKinematicViolationGradient(blockDynamics,
-                                                                            timePointDimension,
-                                                                            worldDimension,
-                                                                            timeIndex,
-                                                                            timeStepSize));
-    constraintGradientIndices.push_back(constraint::GetKinematicViolationGradientIndices(timePointDimension,
-                                                                        worldDimension,
-                                                                        timeIndex));
-  }
-  constraints.push_back(constraint::GetToKinematicGoalSquare(numTimePoints,
-                                                              timePointDimension,
-                                                              kinematicDimensions,
-                                                              goalTimeIndex,
-                                                              goalPoint));
-  constraintGradients.push_back(constraint::GetToKinematicGoalSquareGradient(numTimePoints,
-                                                              timePointDimension,
-                                                              kinematicDimensions,
-                                                              goalTimeIndex,
-                                                              goalPoint));
-  constraintGradientIndices.push_back(constraint::GetToKinematicGoalSquareGradientIndices(timePointDimension,
-                                                                        kinematicDimensions,
-                                                                        goalTimeIndex));
+  std::tie(constraints, constraintGradients, constraintGradientIndices) =
+                constraint::applyGetToKinematicGoalSquareConstraint(constraints,
+                                                                    constraintGradients,
+                                                                    constraintGradientIndices,
+                                                                    numTimePoints,
+                                                                    timePointDimension,
+                                                                    kinematicDimension,
+                                                                    startTimeIndex,
+                                                                    startPoint);
+
+  const unsigned kinematicViolationConstraintStartIndex = 0;
+  const unsigned kinematicViolationConstraintEndIndex = kinematicViolationConstraintStartIndex + numTimePoints - 1;
+  std::tie(constraints, constraintGradients, constraintGradientIndices) =
+                constraint::applyKinematicViolationConstraints(constraints,
+                                                                constraintGradients,
+                                                                constraintGradientIndices,
+                                                                blockDynamics,
+                                                                timePointDimension,
+                                                                worldDimension,
+                                                                kinematicViolationConstraintStartIndex,
+                                                                kinematicViolationConstraintEndIndex,
+                                                                timeStepSize);
+
+  std::tie(constraints, constraintGradients, constraintGradientIndices) =
+                constraint::applyGetToKinematicGoalSquareConstraint(constraints,
+                                                                    constraintGradients,
+                                                                    constraintGradientIndices,
+                                                                    numTimePoints,
+                                                                    timePointDimension,
+                                                                    kinematicDimension,
+                                                                    goalTimeIndex,
+                                                                    goalPoint);
 
   const constraint::ConstraintFunction stackedConstraints = constraint::StackConstriants(constraints);
   EvaluateConstraintFunction constraintFunction = [stackedConstraints](Index n, const Number* x, Index m) {

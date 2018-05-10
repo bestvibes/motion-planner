@@ -171,7 +171,7 @@ TEST_F(kinematicGoalConstraintTest, twoKinematicGoalConstraintGradients){
 								 kinematicGoalTwo);
 
 
-	std::vector<ConstraintFunction> twoGoalConstraintGradientFunctions =
+	std::vector<ConstraintGradientFunction> twoGoalConstraintGradientFunctions =
 												{getToGoalOneSquareGradient, getToGoalTwoSquareGradient};
 	auto stackConstriantGradients = StackConstriantGradients(twoGoalConstraintGradientFunctions);
 
@@ -189,6 +189,54 @@ TEST_F(kinematicGoalConstraintTest, twoKinematicGoalConstraintGradients){
 																						getToKinematicGoalSquareGradientIndicesTwo};
 	auto stackedKinematicGoalSquareGradientIndices = StackConstriantGradientIndices(getToKinematicGoalSquareGradientIndices);
 
+	auto [numConstraints, gradientRows, gradientCols] = stackedKinematicGoalSquareGradientIndices(constraintIndex);
+
+	EXPECT_THAT(squaredDistanceGradientToTwoGoals,
+							ElementsAre(-2, -4, -6, -8, 6, 8, 10, 12));
+	EXPECT_EQ(numConstraints, 2 * kinematicDimension);
+	EXPECT_THAT(gradientRows, ElementsAre(0, 1, 2, 3, 4, 5, 6, 7));
+	EXPECT_THAT(gradientCols, ElementsAre(0, 1, 2, 3, 6, 7, 8, 9));
+}
+
+TEST_F(kinematicGoalConstraintTest, twoKinematicGoalConstraintGradientsUsingApplyFunction){
+	const unsigned goalOneTimeIndex = 0; 
+	const unsigned goalTwoTimeIndex = 1;
+	const unsigned constraintIndex = 0;
+
+	std::vector<double> kinematicGoalOne = {{1, 2, 3, 4}};
+	std::vector<double> kinematicGoalTwo = {{-1, -1, -1, -1}};
+
+	const double* trajectoryPtr = trajectory.data();
+
+	std::vector<ConstraintFunction> twoGoalConstraintFunctions;
+	std::vector<ConstraintGradientFunction> twoGoalConstraintGradientFunctions;
+	std::vector<ConstraintGradientIndicesFunction> getToKinematicGoalSquareGradientIndices;
+
+	std::tie(twoGoalConstraintFunctions, twoGoalConstraintGradientFunctions, getToKinematicGoalSquareGradientIndices) =
+		applyGetToKinematicGoalSquareConstraint(twoGoalConstraintFunctions,
+												twoGoalConstraintGradientFunctions,
+												getToKinematicGoalSquareGradientIndices,
+												numberOfPoints,
+												 pointDimension,
+												 kinematicDimension,
+												 goalOneTimeIndex,
+												 kinematicGoalOne);
+
+	std::tie(twoGoalConstraintFunctions, twoGoalConstraintGradientFunctions, getToKinematicGoalSquareGradientIndices) =
+		applyGetToKinematicGoalSquareConstraint(twoGoalConstraintFunctions,
+												twoGoalConstraintGradientFunctions,
+												getToKinematicGoalSquareGradientIndices,
+												numberOfPoints,
+												 pointDimension,
+												 kinematicDimension,
+												 goalTwoTimeIndex,
+												 kinematicGoalTwo);
+
+	auto stackConstriantGradients = StackConstriantGradients(twoGoalConstraintGradientFunctions);
+	std::vector<double> squaredDistanceGradientToTwoGoals =
+											stackConstriantGradients(trajectoryPtr);
+
+	auto stackedKinematicGoalSquareGradientIndices = StackConstriantGradientIndices(getToKinematicGoalSquareGradientIndices);
 	auto [numConstraints, gradientRows, gradientCols] = stackedKinematicGoalSquareGradientIndices(constraintIndex);
 
 	EXPECT_THAT(squaredDistanceGradientToTwoGoals,
@@ -319,6 +367,46 @@ TEST_F(blockDynamic, twoTimeStepsViolationGradient){
 																							timeIndexOne);
 	std::vector<ConstraintGradientIndicesFunction> getKinematicViolationGradientIndices = {getKinematicViolationGradientIndicesZero,
 																						getKinematicViolationGradientIndicesOne};
+	auto stackedKinematicViolationGradientIndices = StackConstriantGradientIndices(getKinematicViolationGradientIndices);
+
+	auto [numConstraints, gradientRows, gradientCols] = stackedKinematicViolationGradientIndices(constraintIndex);
+
+	std::vector<double> expectedPointGradient = {-1.0, -0.25, 1.0, -0.25};
+	std::vector<double> expectedGradient = view::cycle(expectedPointGradient) | view::take(32);
+	EXPECT_THAT(twoStepKinematicViolationGradients,
+					ElementsAreArray(expectedGradient));
+	EXPECT_EQ(numConstraints, 8);
+	EXPECT_THAT(gradientRows, ElementsAreArray({0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7}));
+	EXPECT_THAT(gradientCols, ElementsAreArray({0, 2, 6, 8, 1, 3, 7, 9, 2, 4, 8, 10, 3, 5, 9, 11, 6, 8, 12, 14, 7, 9, 13, 15, 8, 10, 14, 16, 9, 11, 15, 17}));
+}
+
+TEST_F(blockDynamic, twoTimeStepsViolationGradientUsingApplyFunction){
+	const unsigned timeIndexZero = 0;
+	const unsigned timeIndexOne = 1;
+	const unsigned startTimeIndex = timeIndexZero;
+	const unsigned numTimePoints = 3;
+	const unsigned endTimeIndex = startTimeIndex + numTimePoints - 1;
+	const unsigned constraintIndex = 0;
+	DynamicFunction blockDynamics = BlockDynamics;
+
+	std::vector<ConstraintFunction> twoStepConstraintFunctions;
+	std::vector<ConstraintGradientFunction> twoStepConstraintGradientFunctions;
+	std::vector<ConstraintGradientIndicesFunction> getKinematicViolationGradientIndices;
+
+	std::tie(twoStepConstraintFunctions, twoStepConstraintGradientFunctions, getKinematicViolationGradientIndices) =
+		applyKinematicViolationConstraints(twoStepConstraintFunctions,
+											twoStepConstraintGradientFunctions,
+											getKinematicViolationGradientIndices,
+											blockDynamics,
+											pointDimension,
+											positionDimension,
+											startTimeIndex,
+											endTimeIndex,
+											dt);
+
+	auto getStackConstriantGradients = StackConstriantGradients(twoStepConstraintGradientFunctions);
+	auto twoStepKinematicViolationGradients = getStackConstriantGradients(trajectoryPtr);
+
 	auto stackedKinematicViolationGradientIndices = StackConstriantGradientIndices(getKinematicViolationGradientIndices);
 
 	auto [numConstraints, gradientRows, gradientCols] = stackedKinematicViolationGradientIndices(constraintIndex);

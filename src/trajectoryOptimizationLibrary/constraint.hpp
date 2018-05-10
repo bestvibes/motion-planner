@@ -363,5 +363,60 @@ namespace trajectoryOptimization::constraint {
 				return {totalNumberConstraints, jacStructureRows, jacStructureCols};
 			}
 	};
+
+	std::tuple<std::vector<ConstraintFunction>, std::vector<ConstraintGradientFunction>, std::vector<ConstraintGradientIndicesFunction>>
+		applyGetToKinematicGoalSquareConstraint(std::vector<ConstraintFunction> constraints,
+											std::vector<ConstraintGradientFunction> constraintGradients,
+											std::vector<ConstraintGradientIndicesFunction> constraintGradientIndices,
+											const unsigned numberOfPoints,
+											const unsigned pointDimension,
+											const unsigned kinematicDimension,
+											const unsigned goalTimeIndex, 
+											const std::vector<double>& kinematicGoal) {
+			constraints.push_back(constraint::GetToKinematicGoalSquare(numberOfPoints,
+                                                              pointDimension,
+                                                              kinematicDimension,
+                                                              goalTimeIndex,
+                                                              kinematicGoal));
+			constraintGradients.push_back(constraint::GetToKinematicGoalSquareGradient(numberOfPoints,
+			                                                              pointDimension,
+			                                                              kinematicDimension,
+			                                                              goalTimeIndex,
+			                                                              kinematicGoal));
+			constraintGradientIndices.push_back(constraint::GetToKinematicGoalSquareGradientIndices(pointDimension,
+                                                                        kinematicDimension,
+                                                                        goalTimeIndex));
+
+			return {constraints, constraintGradients, constraintGradientIndices};
+		}
+
+	std::tuple<std::vector<ConstraintFunction>, std::vector<ConstraintGradientFunction>, std::vector<ConstraintGradientIndicesFunction>>
+		applyKinematicViolationConstraints(std::vector<ConstraintFunction> constraints,
+											std::vector<ConstraintGradientFunction> constraintGradients,
+											std::vector<ConstraintGradientIndicesFunction> constraintGradientIndices,
+											const DynamicFunction blockDynamics,
+                                            const unsigned timePointDimension,
+                                            const unsigned worldDimension,
+                                            const unsigned timeIndexStart,
+                                            const unsigned timeIndexEndExclusive,
+                                            const double timeStepSize) {
+			for (int timeIndex = timeIndexStart; timeIndex < timeIndexEndExclusive; timeIndex++) {
+			    constraints.push_back(constraint::GetKinematicViolation(blockDynamics,
+			                                                            timePointDimension,
+			                                                            worldDimension,
+			                                                            timeIndex,
+			                                                            timeStepSize));
+			    constraintGradients.push_back(constraint::GetKinematicViolationGradient(blockDynamics,
+			                                                                            timePointDimension,
+			                                                                            worldDimension,
+			                                                                            timeIndex,
+			                                                                            timeStepSize));
+			    constraintGradientIndices.push_back(constraint::GetKinematicViolationGradientIndices(timePointDimension,
+			                                                                        worldDimension,
+			                                                                        timeIndex));
+			}
+
+			return {constraints, constraintGradients, constraintGradientIndices};
+		}
 }
 
