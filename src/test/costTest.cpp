@@ -44,6 +44,27 @@ TEST(costTest, controlSquareIsTwelveWhenControlsAreThreeTwo) {
 	EXPECT_EQ(12, getControlSquareSum(trajectoryWithControlTwo_rawDouble));
 }
 
+TEST(costTest, controlSquareIsSixPointSevenFiveWhenControlsAreThreeOnePointFive) {
+	using namespace ranges;
+	const unsigned numberOfPoints = 3;
+	const unsigned pointDimension = 3;
+	const unsigned controlDimension = 1;
+	const auto trajectoryDimension = numberOfPoints * pointDimension;
+	std::vector<double> controlTwoPoint = {{0, 0, 1.5}};
+	auto trajectoryWithControlTwo = createTrajectoryWithIdenticalPoints(
+																	numberOfPoints,
+																	controlTwoPoint);
+	assert(trajectoryWithControlTwo.size() == trajectoryDimension);
+	const double* trajectoryWithControlTwo_rawDouble
+								= trajectoryWithControlTwo.data();
+
+
+	auto getControlSquareSum = GetControlSquareSum(numberOfPoints,
+													pointDimension,
+													controlDimension);
+	EXPECT_DOUBLE_EQ(6.75, getControlSquareSum(trajectoryWithControlTwo_rawDouble));
+}
+
 TEST(costTest, controlSquareIs24WhenControlsAreThreeTwoTwo) { 
 	using namespace ranges;
 	const unsigned numberOfPoints = 3;
@@ -97,6 +118,30 @@ TEST(costTest, controlSquareGradientWhenControlsAreThreeTwo) {
 
 
 	const std::vector<double> expectedPoint = {0, 0, 4};
+	const std::vector<double> expected = createTrajectoryWithIdenticalPoints(
+																	numberOfPoints,
+																	expectedPoint);
+	auto getControlSquareSumGradient = GetControlSquareSumGradient(numberOfPoints,
+													pointDimension,
+													controlDimension);
+	EXPECT_EQ(expected, getControlSquareSumGradient(trajectoryWithControlTwo_rawDouble));
+}
+
+TEST(costTest, controlSquareGradientWhenControlsAreThreeOnePointTwoFive) {
+	using namespace ranges;
+	const unsigned numberOfPoints = 3;
+	const unsigned pointDimension = 3;
+	const unsigned controlDimension = 1;
+	const auto trajectoryDimension = numberOfPoints * pointDimension;
+	std::vector<double> controlTwoPoint = {{0, 0, 1.25}};
+	auto trajectoryWithControlTwo = createTrajectoryWithIdenticalPoints(
+																	numberOfPoints,
+																	controlTwoPoint);
+	assert(trajectoryWithControlTwo.size() == trajectoryDimension);
+	const double* trajectoryWithControlTwo_rawDouble
+								= trajectoryWithControlTwo.data();
+
+	const std::vector<double> expectedPoint = {0, 0, 2.5};
 	const std::vector<double> expected = createTrajectoryWithIdenticalPoints(
 																	numberOfPoints,
 																	expectedPoint);

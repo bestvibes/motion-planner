@@ -42,7 +42,7 @@ namespace trajectoryOptimization::cost{
 				auto controlSquare = trajectory | ranges::view::chunk(pointDimension)
 												  | ranges::view::transform(squareAPoint)
 													| ranges::view::join;
-				double controlSquareSum = ranges::accumulate(controlSquare, 0);
+				double controlSquareSum = ranges::accumulate(controlSquare, 0.0);
 				return controlSquareSum;
 			}  
 	};
