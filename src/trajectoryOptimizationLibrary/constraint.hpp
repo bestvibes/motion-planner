@@ -42,6 +42,7 @@ namespace trajectoryOptimization::constraint {
 										{return std::pow(scaler1-scaler2 ,2);};
 			std::vector<double> currentKinematics;
 			auto currentKinematicsStartPtr = trajectoryPtr+kinematicStartIndex;
+			//TODO: control ignored?
 			std::copy_n(currentKinematicsStartPtr,
 						kinematicDimension,
 						std::back_inserter(currentKinematics));

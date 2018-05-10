@@ -28,12 +28,12 @@ int main(int argv, char* argc[])
   const char* velocityFilename = "velocity.txt";
   const char* controlFilename = "control.txt";
 
-  const int worldDimension = 1;
+  const int worldDimension = 3;
   // pos, vel, acc (control)
   const int kinematicDimension = worldDimension * 2;
   const int controlDimension = worldDimension;
   const int timePointDimension = kinematicDimension + controlDimension;
-  const int numTimePoints = 4;
+  const int numTimePoints = 50;
   const int timeStepSize = 1;
 
   const dynamic::DynamicFunction blockDynamics = dynamic::BlockDynamics;
@@ -41,17 +41,14 @@ int main(int argv, char* argc[])
   const int numberVariablesX = timePointDimension * numTimePoints;
 
   const int startTimeIndex = 0;
-  const numberVector startPoint = {0, 0, 0}; //TODO: control ignored?
+  const numberVector startPoint = {0, 0, 0, 0, 0, 0, 0, 0, 0};
   const int goalTimeIndex = numTimePoints - 1;
-  const numberVector goalPoint = {5, 0, 0};
+  const numberVector goalPoint = {50, 40, 30, 0, 0, 0, 0, 0, 0};
 
-  numberVector timePointLowerBounds = {-10, -10, -10};
-  numberVector timePointUpperBounds = {10, 10, 10};
+  const numberVector xLowerBounds(numberVariablesX, -100);
+  const numberVector xUpperBounds(numberVariablesX, 100);
 
-  const numberVector xLowerBounds = utilities::createTrajectoryWithIdenticalPoints(numTimePoints, timePointLowerBounds);
-  const numberVector xUpperBounds = utilities::createTrajectoryWithIdenticalPoints(numTimePoints, timePointUpperBounds);
-
-  numberVector xStartingPoint(numberVariablesX);
+  const numberVector xStartingPoint(numberVariablesX, 0);
 
   const auto costFunction = cost::GetControlSquareSum(numTimePoints, timePointDimension, controlDimension);
   EvaluateObjectiveFunction objectiveFunction = [costFunction](Index n, const Number* x) {
@@ -76,6 +73,18 @@ int main(int argv, char* argc[])
                                                                     kinematicDimension,
                                                                     startTimeIndex,
                                                                     startPoint);
+
+  const unsigned randomTargetTimeIndex = 25;
+  const std::vector<double> randomTarget = {-10, 20, 30, 0, 0, 0, -10, 20, 30};
+  std::tie(constraints, constraintGradients, constraintGradientIndices) =
+                constraint::applyGetToKinematicGoalSquareConstraint(constraints,
+                                                                    constraintGradients,
+                                                                    constraintGradientIndices,
+                                                                    numTimePoints,
+                                                                    timePointDimension,
+                                                                    kinematicDimension,
+                                                                    randomTargetTimeIndex,
+                                                                    randomTarget);
 
   const unsigned kinematicViolationConstraintStartIndex = 0;
   const unsigned kinematicViolationConstraintEndIndex = kinematicViolationConstraintStartIndex + numTimePoints - 1;
