@@ -24,6 +24,10 @@ using namespace trajectoryOptimization;
 
 int main(int argv, char* argc[])
 {
+  const char* positionFilename = "position.txt";
+  const char* velocityFilename = "velocity.txt";
+  const char* controlFilename = "control.txt";
+
   const int worldDimension = 1;
   // pos, vel, acc (control)
   const int kinematicDimension = worldDimension * 2;
@@ -126,7 +130,7 @@ int main(int argv, char* argc[])
     return values;
   };
 
-  FinalizerFunction finalizerFunction = [](SolverReturn status, Index n, const Number* x,
+  FinalizerFunction finalizerFunction = [=](SolverReturn status, Index n, const Number* x,
                         const Number* zLower, const Number* zUpper,
                         Index m, const Number* g, const Number* lambda,
                         Number objValue, const IpoptData* ipData,
@@ -135,6 +139,14 @@ int main(int argv, char* argc[])
     for (Index i=0; i<n; i++) {
       printf("x[%d] = %e\n", i, x[i]); 
     }
+
+    utilities::outputPositionVelocityControlToFiles(x,
+                                                    numTimePoints,
+                                                    timePointDimension,
+                                                    worldDimension,
+                                                    positionFilename,
+                                                    velocityFilename,
+                                                    controlFilename);
 
     printf("\n\nSolution of the bound multipliers, z_L and z_U\n");
     for (Index i=0; i<n; i++) {
