@@ -4,13 +4,14 @@
 #include <cassert>
 #include <algorithm>
 #include <fstream>
+#include <sstream>
 #include <range/v3/view.hpp>
 
 namespace trajectoryOptimization::utilities {
 	using namespace ranges;
 
 	std::vector<double> createTrajectoryWithIdenticalPoints(unsigned numberOfPoints,
-								 							const std::vector<double>& singlePoint){
+															const std::vector<double>& singlePoint){
 
 		auto trajectoryDimension = numberOfPoints * singlePoint.size();
 		auto trajectorWithIndeticalPoints_Range = view::all(singlePoint)
@@ -66,9 +67,9 @@ namespace trajectoryOptimization::utilities {
 		for (int timeIndex = 0; timeIndex < numberOfPoints; timeIndex++) {
 			auto const point = getTrajectoryPoint(trajectoryPointer, timeIndex, pointDimension);
 			auto const [position, velocity, control] = getPointPositionVelocityControl(point,
-	                                                                                    worldDimension,
-	                                                                                    worldDimension,
-	                                                                                    worldDimension);
+																						worldDimension,
+																						worldDimension,
+																						worldDimension);
 			for (int i = 0; i < worldDimension; i++) {
 				positionFile << position[i] << " ";
 				velocityFile << velocity[i] << " ";
@@ -81,6 +82,47 @@ namespace trajectoryOptimization::utilities {
 		positionFile.close();
 		velocityFile.close();
 		controlFile.close();
+	}
+
+	void plotTrajectory(const unsigned worldDimension,
+						const char* positionFilename,
+						const char* velocityFilename,
+						const char* controlFilename) {
+		const char* plotDimensionFormat = "set title 'Position (dim %d)'; \
+											plot '%s' using %d notitle; \
+											set title 'Velocity (dim %d)'; \
+											plot '%s' using %d notitle; \
+											set title 'Control (dim %d)'; \
+											plot '%s' using %d notitle;";
+
+		std::stringstream plotCommand;
+		plotCommand << "gnuplot -e ";
+		plotCommand << "\"set multiplot layout 3, ";
+		plotCommand << worldDimension;
+		plotCommand << " title 'Trajectory' font ',14'; set tmargin 3; set xlabel 'timeIndex';";
+
+		const int plotDimensionMaxLength = 1024;
+		char plotDimension[plotDimensionMaxLength];
+		for (int dim = 1; dim <= worldDimension; dim++) {
+			snprintf(plotDimension,
+						plotDimensionMaxLength,
+						plotDimensionFormat,
+						dim,
+						positionFilename,
+						dim,
+						dim,
+						velocityFilename,
+						dim,
+						dim,
+						controlFilename,
+						dim);
+			plotCommand << plotDimension;
+		}
+
+		plotCommand << "unset multiplot; \
+						pause -1;\"";
+
+		system(plotCommand.str().c_str());
 	}
 
 }

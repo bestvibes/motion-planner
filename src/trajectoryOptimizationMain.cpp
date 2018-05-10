@@ -202,4 +202,6 @@ int main(int argv, char* argc[])
       std::cout << std::endl << std::endl << "*** The final value of the objective function is " << final_obj << '.' << std::endl;
     }
   }
+
+  utilities::plotTrajectory(worldDimension, positionFilename, velocityFilename, controlFilename);
 }
