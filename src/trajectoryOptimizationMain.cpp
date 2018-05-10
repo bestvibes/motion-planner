@@ -31,8 +31,8 @@ int main(int argv, char* argc[])
   const int worldDimension = 1;
   // pos, vel, acc (control)
   const int kinematicDimension = worldDimension * 2;
-  const int controlDimensions = worldDimension;
-  const int timePointDimension = kinematicDimension + controlDimensions;
+  const int controlDimension = worldDimension;
+  const int timePointDimension = kinematicDimension + controlDimension;
   const int numTimePoints = 4;
   const int timeStepSize = 1;
 
@@ -53,12 +53,12 @@ int main(int argv, char* argc[])
 
   numberVector xStartingPoint(numberVariablesX);
 
-  const auto costFunction = cost::GetControlSquareSum(numTimePoints, timePointDimension, controlDimensions);
+  const auto costFunction = cost::GetControlSquareSum(numTimePoints, timePointDimension, controlDimension);
   EvaluateObjectiveFunction objectiveFunction = [costFunction](Index n, const Number* x) {
     return costFunction(x);
   };
 
-  const auto costGradientFunction = cost::GetControlSquareSumGradient(numTimePoints, timePointDimension, controlDimensions);
+  const auto costGradientFunction = cost::GetControlSquareSumGradient(numTimePoints, timePointDimension, controlDimension);
   EvaluateGradientFunction gradientFunction = [costGradientFunction](Index n, const Number* x) {
     return costGradientFunction(x);
   };
