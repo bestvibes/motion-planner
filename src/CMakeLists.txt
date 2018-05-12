@@ -7,6 +7,7 @@ include(../cmake/LocalProperties.cmake)
 # Find dependencies
 include(../cmake/FindMujoco.cmake)
 include(../cmake/FindIpopt.cmake)
+include(../cmake/FindAdolc.cmake)
 
 if (NOT MUJOCO_FOUND)
 	message(FATAL_ERROR "Failed to find mujoco at " ${MUJOCO_ROOT_DIR})
@@ -17,9 +18,11 @@ target_include_directories(trajectoryOptimizationLib INTERFACE
 	${Range3_INCLUDE_DIR}
 	${IPOPT_INCLUDE_DIR}
 	${MUJOCO_INCLUDE_DIR}
+	${ADOLC_INCLUDE_DIRS}
 	"${PROJECT_SOURCE_DIR}/trajectoryOptimizationLibrary")
 target_link_libraries(trajectoryOptimizationLib INTERFACE
-	${IPOPT_LIBRARIES})
+	${IPOPT_LIBRARIES}
+	${ADOLC_LIBARIES})
 
 enable_testing()
 find_package(GTest REQUIRED)
