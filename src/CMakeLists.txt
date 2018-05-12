@@ -21,8 +21,6 @@ if (NOT ADOLC_FOUND)
 	message(FATAL_ERROR "Failed to find Adolc at " ${ADOLC_HOME})
 endif()
 
-message(STATUS "thing: ${ADOLC_LIBRARIES} ${IPOPT_LIBRARIES}")
-
 add_library(trajectoryOptimizationLib INTERFACE)
 target_include_directories(trajectoryOptimizationLib INTERFACE
 	${Range3_INCLUDE_DIR}
