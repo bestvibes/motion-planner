@@ -22,12 +22,12 @@ IF( ADOLC_FOUND )
     MESSAGE(STATUS "package adolc>=2.3 found")
   ENDIF()
 ELSE( ADOLC_FOUND )
-  FIND_PATH(ADOLC_INCLUDE_DIRS NAMES adouble.h
-            HINTS  "${ADOLC_HOME}/include/adolc"
-                   "/usr/include/adolc" )
+  FIND_PATH(ADOLC_INCLUDE_DIRS NAMES adolc/adouble.h
+            HINTS  "${ADOLC_HOME}/include"
+                   "/usr/include" )
            
   FIND_LIBRARY(ADOLC_LIBRARY 
-                adolc
+                NAMES adolc
                 HINTS "${ADOLC_HOME}/lib64"
                       "/usr/lib64"
                       "${ADOLC_HOME}/lib"

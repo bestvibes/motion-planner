@@ -13,6 +13,16 @@ if (NOT MUJOCO_FOUND)
 	message(FATAL_ERROR "Failed to find mujoco at " ${MUJOCO_ROOT_DIR})
 endif()
 
+if (NOT IPOPT_FOUND)
+	message(FATAL_ERROR "Failed to find Ipopt")
+endif()
+
+if (NOT ADOLC_FOUND)
+	message(FATAL_ERROR "Failed to find Adolc at " ${ADOLC_HOME})
+endif()
+
+message(STATUS "thing: ${ADOLC_LIBRARIES} ${IPOPT_LIBRARIES}")
+
 add_library(trajectoryOptimizationLib INTERFACE)
 target_include_directories(trajectoryOptimizationLib INTERFACE
 	${Range3_INCLUDE_DIR}
@@ -21,7 +31,8 @@ target_include_directories(trajectoryOptimizationLib INTERFACE
 	${ADOLC_INCLUDE_DIRS}
 	"${PROJECT_SOURCE_DIR}/trajectoryOptimizationLibrary")
 target_link_libraries(trajectoryOptimizationLib INTERFACE
-	${IPOPT_LIBRARIES}
+	${IPOPT_LIBRARIES})
+target_link_libraries(trajectoryOptimizationLib INTERFACE
 	${ADOLC_LIBARIES})
 
 enable_testing()
@@ -30,6 +41,7 @@ find_package(GTest REQUIRED)
 add_executable(costTest test/costTest.cpp)
 target_link_libraries(costTest PUBLIC GTest::GTest GTest::Main)
 target_link_libraries(costTest PUBLIC trajectoryOptimizationLib)
+target_link_libraries(costTest PUBLIC ${ADOLC_LIBRARIES})
 
 add_executable(constraintTest test/constraintTest.cpp)
 target_link_libraries(constraintTest PUBLIC GTest::GTest GTest::Main)
@@ -57,9 +69,12 @@ add_executable(trajectoryOptimization trajectoryOptimizationMain.cpp)
 target_link_libraries(trajectoryOptimization PUBLIC trajectoryOptimizationLib)
 target_link_libraries(trajectoryOptimization PUBLIC
 	${IPOPT_LIBRARIES})
+target_link_libraries(trajectoryOptimization PUBLIC
+	${ADOLC_LIBRARIES})
 target_include_directories(trajectoryOptimization PUBLIC
 	${Range3_INCLUDE_DIR}
 	${IPOPT_INCLUDE_DIR}
-	${MUJOCO_INCLUDE_DIR})
+	${MUJOCO_INCLUDE_DIR}
+	${ADOLC_INCLUDE_DIRS})
 
 
