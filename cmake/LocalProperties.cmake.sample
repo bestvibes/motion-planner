@@ -1,4 +1,4 @@
-# Required packages: gtest, gmock, ipopt, cmake, mujoco, range, glew, gnuplot, adolc
+# Required packages: gtest, gmock, ipopt, cmake, mujoco, range, glew, gnuplot
 
 # To install Ipopt binaries/headers:
 # For MacOS: `brew install dartsim/dart/ipopt` (mirrored tap during homebrew/core migration)
@@ -12,6 +12,3 @@ set (MUJOCO_ROOT_DIR "FIXME")
 
 # Download Range-v3 source/headers from GitHub and point this to include folder
 set (Range3_INCLUDE_DIR "FIXME")
-
-# Download/Make/Install Adol-C and point this to the adolc_base folder
-set (ADOLC_HOME "FIXME/adolc_base")
