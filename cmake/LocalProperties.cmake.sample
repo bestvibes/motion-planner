@@ -4,7 +4,9 @@
 # For MacOS: `brew install dartsim/dart/ipopt` (mirrored tap during homebrew/core migration)
 # https://github.com/robotology/homebrew-formulae/issues/12
 
-# COPY THIS FILE TO LocalProperties.cmake AND FOLLOW THE INSTRUCTIONS BELOW
+# COPY SETUP.SH FROM THE ROOT OF THIS REPO INTO AN EMPTY FOLDER TO INSTALL DEPENDENCIES (OUTSIDE OF THIS REPO)
+# RUN SETUP.SH
+# COPY THIS FILE TO LocalProperties.cmake AND PLUG IN THE VALUES RETURNED BY SETUP.SH (IGNORE MUJOCO FOR NOW)
 
 # Mujoco Root Directory, this should point to the "mjpro###" folder in the
 # extracted zip you download
