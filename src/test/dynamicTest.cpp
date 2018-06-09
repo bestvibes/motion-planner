@@ -9,8 +9,9 @@ TEST(blockDynamic, controlZero){
 	dvector velocity = {0, 0};
 	dvector control =  {0, 0};
 
-	dvector acceleration = BlockDynamics(position, velocity, control); 
-	EXPECT_THAT(acceleration, ElementsAre(0, 0));
+	auto acceleration = BlockDynamics(position.data(), position.size(), velocity.data(), velocity.size(), control.data(), control.size()); 
+	EXPECT_DOUBLE_EQ(acceleration[0], 0);
+	EXPECT_DOUBLE_EQ(acceleration[1], 0);
 }
 
 TEST(blockDynamic, controlOneTwo){
@@ -18,8 +19,9 @@ TEST(blockDynamic, controlOneTwo){
 	dvector velocity = {1, 2};
 	dvector control =  {1, 2};
 
-	auto acceleration = BlockDynamics(position, velocity, control); 
-	EXPECT_THAT(acceleration, ElementsAre(1, 2));
+	auto acceleration = BlockDynamics(position.data(), position.size(), velocity.data(), velocity.size(), control.data(), control.size()); 
+	EXPECT_DOUBLE_EQ(acceleration[0], 1);
+	EXPECT_DOUBLE_EQ(acceleration[1], 2);
 }
 
 TEST(forward, zeroVelocityAndControl){

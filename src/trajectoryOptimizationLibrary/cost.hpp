@@ -3,16 +3,21 @@
 #include <cassert>
 #include <range/v3/view.hpp> 
 
+#include "utilities.hpp"
+
 
 namespace trajectoryOptimization::cost{
+
+	using namespace trajectoryOptimization;
 
 	class GetControlSquareSum {
 		const unsigned numberOfPoints;
 		const unsigned pointDimension;
 		const unsigned controlDimension;
-		const int trajectoryDimension; 
+		const int trajectoryDimension;
 		const int controlStartIndex; 
 		const int controlEndIndex;
+		std::vector<unsigned> controlIndices;
 		public:
 			GetControlSquareSum(const unsigned numberOfPoints,
 								const unsigned pointDimension,
@@ -25,67 +30,27 @@ namespace trajectoryOptimization::cost{
 									controlEndIndex(pointDimension)
 								{
 									assert(controlDimension<pointDimension);
+
+									auto isControlIndex = [&](unsigned trajectoryIndex) {
+										auto indexInPoint = (trajectoryIndex % pointDimension);
+										return indexInPoint >= controlStartIndex && indexInPoint < controlEndIndex;
+									};
+
+									std::vector<double> trajectoryIndices(trajectoryDimension);
+									std::iota(trajectoryIndices.begin(), trajectoryIndices.end(), 0);
+
+									std::copy_if(trajectoryIndices.begin(), trajectoryIndices.end(), std::back_inserter(controlIndices), isControlIndex);
 								};
 
 			double operator()(const double* trajectoryPointer) const {
-				std::vector<double> trajectory(trajectoryPointer,
-											 	trajectoryPointer+trajectoryDimension);
+				double controlSquareSum = 0;
 
-				auto squareScaler =  [](auto singleControlValue)
-										 {return std::pow(singleControlValue, 2);};
+				const auto addToControlSquareSum = [&controlSquareSum, &trajectoryPointer] (const unsigned controlIndex)
+										 { controlSquareSum += std::pow(trajectoryPointer[controlIndex], 2); };
 
-				auto squareAPoint = [=](auto point) {
-					return point | ranges::view::slice(controlStartIndex, controlEndIndex) // get u
-								 | ranges::view::transform(squareScaler); //square
-				};
+				std::for_each(controlIndices.begin(), controlIndices.end(), addToControlSquareSum);
 
-				auto controlSquare = trajectory | ranges::view::chunk(pointDimension)
-												  | ranges::view::transform(squareAPoint)
-													| ranges::view::join;
-				double controlSquareSum = ranges::accumulate(controlSquare, 0.0);
 				return controlSquareSum;
-			}  
-	};
-
-	class GetControlSquareSumGradient {
-		const unsigned numberOfPoints;
-		const unsigned pointDimension;
-		const unsigned controlDimension;
-		const int trajectoryDimension; 
-		const int controlStartIndex; 
-		const int controlEndIndex;
-		public:
-			GetControlSquareSumGradient(const unsigned numberOfPoints,
-										const unsigned pointDimension,
-										const unsigned controlDimension):
-											numberOfPoints(numberOfPoints),
-											pointDimension(pointDimension),
-											controlDimension(controlDimension),
-											trajectoryDimension(numberOfPoints * pointDimension),
-											controlStartIndex(pointDimension - controlDimension),
-											controlEndIndex(pointDimension)
-										{
-											assert(controlDimension<pointDimension);
-										};
-
-			std::vector<double> operator()(const double* trajectoryPointer) const {
-				std::vector<double> trajectory(trajectoryPointer,
-											 	trajectoryPointer+trajectoryDimension);
-
-				auto doubleControlScaler =  [](auto singleControlValue)
-										 {return 2 * singleControlValue;};
-
-				std::vector<double> timePointWithoutControlGradient(pointDimension - controlDimension);
-
-				auto doubleControl = [=](auto point) {
-					return ranges::view::concat(timePointWithoutControlGradient, point | ranges::view::slice(controlStartIndex, controlEndIndex) // get u
-								 															| ranges::view::transform(doubleControlScaler)); //square
-				};
-
-				auto controlDoubled = trajectory | ranges::view::chunk(pointDimension)
-												  | ranges::view::transform(doubleControl)
-													| ranges::view::join;
-				return controlDoubled;
 			}  
 	};
 }//namespace

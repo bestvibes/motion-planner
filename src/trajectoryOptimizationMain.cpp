@@ -1,9 +1,3 @@
-// Copyright (C) 2005, 2009 International Business Machines and others.
-// All Rights Reserved.
-// This code is published under the Eclipse Public License.
-//
-// $Id: block_main.cpp 2398 2013-10-19 18:08:59Z stefan $
-
 #include "coin/IpIpoptApplication.hpp"
 #include "coin/IpSolveStatistics.hpp"
 #include <iostream>
@@ -13,6 +7,7 @@
 
 #include "constraint.hpp"
 #include "cost.hpp"
+#include "derivative.hpp"
 #include "dynamic.hpp"
 #include "optimizer.hpp"
 #include "utilities.hpp"
@@ -55,76 +50,60 @@ int main(int argv, char* argc[])
     return costFunction(x);
   };
 
-  const auto costGradientFunction = cost::GetControlSquareSumGradient(numTimePoints, timePointDimension, controlDimension);
+  const auto costGradientFunction = derivative::GetGradientOfVectorToDoubleFunction(costFunction, numberVariablesX);
   EvaluateGradientFunction gradientFunction = [costGradientFunction](Index n, const Number* x) {
     return costGradientFunction(x);
   };
 
   std::vector<constraint::ConstraintFunction> constraints;
-  std::vector<constraint::ConstraintGradientFunction> constraintGradients;
-  std::vector<constraint::ConstraintGradientIndicesFunction> constraintGradientIndices;
 
-  std::tie(constraints, constraintGradients, constraintGradientIndices) =
-                constraint::applyGetToKinematicGoalSquareConstraint(constraints,
-                                                                    constraintGradients,
-                                                                    constraintGradientIndices,
-                                                                    numTimePoints,
-                                                                    timePointDimension,
-                                                                    kinematicDimension,
-                                                                    startTimeIndex,
-                                                                    startPoint);
+  constraints.push_back(constraint::GetToKinematicGoalSquare(numTimePoints,
+                                                              timePointDimension,
+                                                              kinematicDimension,
+                                                              startTimeIndex,
+                                                              startPoint));
 
   const unsigned randomTargetTimeIndex = 25;
   const std::vector<double> randomTarget = {-10, 20, 30, 0, 0, 0, -10, 20, 30};
-  std::tie(constraints, constraintGradients, constraintGradientIndices) =
-                constraint::applyGetToKinematicGoalSquareConstraint(constraints,
-                                                                    constraintGradients,
-                                                                    constraintGradientIndices,
-                                                                    numTimePoints,
-                                                                    timePointDimension,
-                                                                    kinematicDimension,
-                                                                    randomTargetTimeIndex,
-                                                                    randomTarget);
+  constraints.push_back(constraint::GetToKinematicGoalSquare(numTimePoints,
+                                                              timePointDimension,
+                                                              kinematicDimension,
+                                                              randomTargetTimeIndex,
+                                                              randomTarget));
 
   const unsigned kinematicViolationConstraintStartIndex = 0;
   const unsigned kinematicViolationConstraintEndIndex = kinematicViolationConstraintStartIndex + numTimePoints - 1;
-  std::tie(constraints, constraintGradients, constraintGradientIndices) =
-                constraint::applyKinematicViolationConstraints(constraints,
-                                                                constraintGradients,
-                                                                constraintGradientIndices,
+  constraints = constraint::applyKinematicViolationConstraints(constraints,
                                                                 blockDynamics,
                                                                 timePointDimension,
                                                                 worldDimension,
                                                                 kinematicViolationConstraintStartIndex,
                                                                 kinematicViolationConstraintEndIndex,
                                                                 timeStepSize);
+                
+  constraints.push_back(constraint::GetToKinematicGoalSquare(numTimePoints,
+                                                                timePointDimension,
+                                                                kinematicDimension,
+                                                                goalTimeIndex,
+                                                                goalPoint));
 
-  std::tie(constraints, constraintGradients, constraintGradientIndices) =
-                constraint::applyGetToKinematicGoalSquareConstraint(constraints,
-                                                                    constraintGradients,
-                                                                    constraintGradientIndices,
-                                                                    numTimePoints,
-                                                                    timePointDimension,
-                                                                    kinematicDimension,
-                                                                    goalTimeIndex,
-                                                                    goalPoint);
-
-  const constraint::ConstraintFunction stackedConstraints = constraint::StackConstriants(constraints);
-  EvaluateConstraintFunction constraintFunction = [stackedConstraints](Index n, const Number* x, Index m) {
-    return stackedConstraints(x);
-  };
-
-  const unsigned startConstraintIndex = 0;
-  const constraint::ConstraintGradientIndicesFunction stackedConstraintGradientIndices = constraint::StackConstriantGradientIndices(constraintGradientIndices);
-  auto const [numberConstraintsG, jacStructureRows, jacStructureCols] = stackedConstraintGradientIndices(startConstraintIndex);
+  const constraint::ConstraintFunction stackedConstraintFunction = constraint::StackConstriants(numberVariablesX, constraints);
+  const unsigned numberConstraintsG = stackedConstraintFunction(xStartingPoint.data()).size();
   const numberVector gLowerBounds(numberConstraintsG);
   const numberVector gUpperBounds(numberConstraintsG);
-  const int numberNonzeroJacobian = jacStructureRows.size();
+  EvaluateConstraintFunction constraintFunction = [stackedConstraintFunction](Index n, const Number* x, Index m) {
+    return stackedConstraintFunction(x);
+  };
 
-  const constraint::ConstraintGradientFunction stackedConstraintGradients = constraint::StackConstriantGradients(constraintGradients);
-  GetJacobianValueFunction jacobianValueFunction = [stackedConstraintGradients](Index n, const Number* x, Index m,
+  indexVector jacStructureRows, jacStructureCols;
+  constraint::ConstraintGradientFunction evaluateJacobianValueFunction;
+  std::tie(jacStructureRows, jacStructureCols, evaluateJacobianValueFunction) =
+      derivative::getSparsityPatternAndJacobianFunctionOfVectorToVectorFunction(stackedConstraintFunction, numberVariablesX);
+
+  const int numberNonzeroJacobian = jacStructureRows.size();
+  GetJacobianValueFunction jacobianValueFunction = [evaluateJacobianValueFunction](Index n, const Number* x, Index m,
                             Index numberElementsJacobian) {
-    return stackedConstraintGradients(x);
+    return evaluateJacobianValueFunction(x);
   };
 
 
@@ -139,7 +118,7 @@ int main(int argv, char* argc[])
     return values;
   };
 
-  FinalizerFunction finalizerFunction = [=](SolverReturn status, Index n, const Number* x,
+  FinalizerFunction finalizerFunction = [&](SolverReturn status, Index n, const Number* x,
                         const Number* zLower, const Number* zUpper,
                         Index m, const Number* g, const Number* lambda,
                         Number objValue, const IpoptData* ipData,
@@ -156,14 +135,6 @@ int main(int argv, char* argc[])
                                                     positionFilename,
                                                     velocityFilename,
                                                     controlFilename);
-
-    printf("\n\nSolution of the bound multipliers, z_L and z_U\n");
-    for (Index i=0; i<n; i++) {
-      printf("z_L[%d] = %e\n", i, zLower[i]); 
-    }
-    for (Index i=0; i<n; i++) {
-      printf("z_U[%d] = %e\n", i, zUpper[i]); 
-    }
 
     printf("\n\nObjective value\n");
     printf("f(x*) = %e\n", objValue); 

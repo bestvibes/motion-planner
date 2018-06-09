@@ -48,11 +48,16 @@ add_executable(optimizerTest test/optimizerTest.cpp)
 target_link_libraries(optimizerTest PUBLIC GTest::GTest GTest::Main)
 target_link_libraries(optimizerTest PUBLIC trajectoryOptimizationLib)
 
+add_executable(derivativeTest test/derivativeTest.cpp)
+target_link_libraries(derivativeTest PUBLIC GTest::GTest GTest::Main)
+target_link_libraries(derivativeTest PUBLIC trajectoryOptimizationLib)
+
 add_test(costTest costTest)
 add_test(constriantTest constraintTest)
 add_test(dynamicTest dynamicTest)
 add_test(utilitiesTest utilitiesTest)
 add_test(optimizerTest optimizerTest)
+add_test(derivativeTest derivativeTest)
 
 add_executable(trajectoryOptimization trajectoryOptimizationMain.cpp)
 target_link_libraries(trajectoryOptimization PUBLIC trajectoryOptimizationLib)

@@ -8,16 +8,22 @@
 #include <range/v3/view.hpp>
 
 namespace trajectoryOptimization::dynamic {
-	using dvector = std::vector<double>; 
-	using DynamicFunction = std::function<dvector(const dvector&,
-													const dvector&,
-													const dvector&)>;
+	using dvector = std::vector<double>;
+	using DynamicFunction = std::function<const double*(const double*,
+													const unsigned,
+													const double*,
+													const unsigned,
+													const double*,
+													const unsigned)>;
 	using namespace ranges;
 
-	dvector BlockDynamics(const dvector& position,
-							const dvector& velocity,
-							const dvector& control){
-		assert(position.size() == velocity.size());  
+	const double* BlockDynamics(const double* position,
+							const unsigned positionDimension,
+							const double* velocity,
+							const unsigned velocityDimension,
+							const double* control,
+							const unsigned controlDimension){
+		assert(positionDimension == velocityDimension);  
 		return control;
 	}
 
@@ -28,7 +34,7 @@ namespace trajectoryOptimization::dynamic {
 		assert (position.size() == velocity.size()); 
 		assert (position.size() == acceleration.size()); 
 
-		auto moveForwardDt  = [dt](auto scaler, auto derivative){
+		const auto moveForwardDt  = [&dt](auto scaler, auto derivative){
 			return scaler + derivative*dt;  
 		};
 

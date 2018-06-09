@@ -14,11 +14,11 @@ namespace trajectoryOptimization::utilities {
 															const std::vector<double>& singlePoint){
 
 		auto trajectoryDimension = numberOfPoints * singlePoint.size();
-		auto trajectorWithIndeticalPoints_Range = view::all(singlePoint)
+		auto trajectoryWithIdenticalPoints_Range = view::all(singlePoint)
 													| view::cycle
 													| view::take(trajectoryDimension);
 		std::vector<double> trajectoryWithIdenticalPoints
-										= yield_from(trajectorWithIndeticalPoints_Range);
+										= yield_from(trajectoryWithIdenticalPoints_Range);
 		return trajectoryWithIdenticalPoints;
 	}
 
