@@ -18,6 +18,9 @@
 #  IPOPT_DEFINITIONS  - Flags to be added to linker's options
 #  IPOPT_LINK_FLAGS   - Flags to be added to linker's options
 #  IPOPT_FOUND        - If false, don't try to use IPOPT
+# and the following imported targets
+#
+#     Ipopt::Ipopt
 
 #=============================================================================
 # Copyright (C) 2008-2010 RobotCub Consortium
@@ -230,4 +233,17 @@ mark_as_advanced(IPOPT_INCLUDE_DIRS
                  IPOPT_LINK_FLAGS)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(IPOPT DEFAULT_MSG IPOPT_LIBRARIES)
+find_package_handle_standard_args(Ipopt
+    REQUIRED_VARS IPOPT_INCLUDE_DIRS IPOPT_LIBRARIES
+    VERSION_VAR IPOPT_VERSION
+)
+
+if(IPOPT_FOUND AND NOT TARGET Ipopt::Ipopt)
+    add_library(Ipopt::Ipopt INTERFACE IMPORTED)
+    set_target_properties(Ipopt::Ipopt PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${IPOPT_INCLUDE_DIRS}"
+        INTERFACE_LINK_LIBRARIES "${IPOPT_LIBRARIES}"
+        INTERFACE_COMPILE_DEFINITIONS "${IPOPT_DEFINITIONS}"
+        INTERFACE_LINK_OPTIONS "${IPOPT_LINK_FLAGS}"
+    )
+endif()

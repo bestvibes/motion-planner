@@ -1,16 +1,13 @@
 # Required packages: gtest, gmock, ipopt, cmake, mujoco, range, glew, gnuplot
+# Only need to manually install: cmake, ipopt, glew, gnuplot, mujoco
 
 # To install Ipopt binaries/headers:
 # For MacOS: `brew install dartsim/dart/ipopt` (mirrored tap during homebrew/core migration)
 # https://github.com/robotology/homebrew-formulae/issues/12
 
-# COPY SETUP.SH FROM THE ROOT OF THIS REPO INTO AN EMPTY FOLDER TO INSTALL DEPENDENCIES (OUTSIDE OF THIS REPO)
-# RUN SETUP.SH
-# COPY THIS FILE TO LocalProperties.cmake AND PLUG IN THE VALUES RETURNED BY SETUP.SH (IGNORE MUJOCO FOR NOW)
+# RUN SETUP.SH (INSTALLS EVERYTHING NEEDED FOR MAC EXCEPT MUJOCO)
+# COPY THIS FILE TO LocalProperties.cmake AND FILL IN THE FIXME BELOW
 
 # Mujoco Root Directory, this should point to the "mjpro###" folder in the
 # extracted zip you download
 set (MUJOCO_ROOT_DIR "FIXME")
-
-# Download Range-v3 source/headers from GitHub and point this to include folder
-set (Range3_INCLUDE_DIR "FIXME")

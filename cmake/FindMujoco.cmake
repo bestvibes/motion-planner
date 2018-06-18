@@ -7,6 +7,9 @@
 #  MUJOCO_INCLUDE_DIR
 #  MUJOCO_LIB
 #  MUJOCO_EXTERN_LIBS
+# and the following imported targets
+#
+#     Mujoco::Mujoco
 
 message(STATUS "MuJoCo path: " ${MUJOCO_ROOT_DIR})
 set(MUJOCO_FOUND ON)
@@ -48,4 +51,16 @@ else()
 	message(STATUS  "found GLFW library at: " ${LIB_GLFW})
 endif()
 
-set(MUJOCO_EXTERN_LIBS ${LIB_GL} ${LIB_GLEW} ${LIB_GLFW})
+set(MUJOCO_LIBRARIES "" CACHE STRING "Mujoco libraries" FORCE)
+list(APPEND MUJOCO_LIBRARIES ${MUJOCO_LIB})
+list(APPEND MUJOCO_LIBRARIES ${LIB_GL})
+list(APPEND MUJOCO_LIBRARIES ${LIB_GLEW})
+list(APPEND MUJOCO_LIBRARIES ${LIB_GLFW})
+
+if(MUJOCO_FOUND AND NOT TARGET Mujoco::Mujoco)
+    add_library(Mujoco::Mujoco INTERFACE IMPORTED)
+    set_target_properties(Mujoco::Mujoco PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${MUJOCO_INCLUDE_DIR}"
+        INTERFACE_LINK_LIBRARIES "${MUJOCO_LIBRARIES}"
+    )
+endif()
