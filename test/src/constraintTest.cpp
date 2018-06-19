@@ -2,9 +2,9 @@
 #include <gmock/gmock.h>
 #include <range/v3/view.hpp>
 #include <functional>
-#include "utilities.hpp"
-#include "dynamic.hpp"
-#include "constraint.hpp"
+#include "trajectoryOptimization/utilities.hpp"
+#include "trajectoryOptimization/dynamic.hpp"
+#include "trajectoryOptimization/constraint.hpp"
 
 using namespace trajectoryOptimization::constraint;
 using namespace trajectoryOptimization::utilities;

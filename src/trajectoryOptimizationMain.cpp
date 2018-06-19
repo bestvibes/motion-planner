@@ -5,12 +5,12 @@
 #include <functional>
 #include <range/v3/view.hpp>
 
-#include "constraint.hpp"
-#include "cost.hpp"
-#include "derivative.hpp"
-#include "dynamic.hpp"
-#include "optimizer.hpp"
-#include "utilities.hpp"
+#include "trajectoryOptimization/constraint.hpp"
+#include "trajectoryOptimization/cost.hpp"
+#include "trajectoryOptimization/derivative.hpp"
+#include "trajectoryOptimization/dynamic.hpp"
+#include "trajectoryOptimization/optimizer.hpp"
+#include "trajectoryOptimization/utilities.hpp"
 
 using namespace Ipopt;
 using namespace trajectoryOptimization::optimizer;

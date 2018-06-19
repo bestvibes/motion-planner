@@ -15,17 +15,20 @@ find_package(Rangev3 REQUIRED MODULE)
 
 add_library(trajectoryOptimizationLib INTERFACE)
 target_include_directories(trajectoryOptimizationLib INTERFACE
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/trajectoryOptimizationLibrary>
-	$<INSTALL_INTERFACE:include/trajectoryOptimizationLib>
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+	$<INSTALL_INTERFACE:include>
 )
 target_link_libraries(trajectoryOptimizationLib INTERFACE
 	Ipopt::Ipopt Rangev3::Rangev3
 )
 
 add_executable(trajectoryOptimization src/trajectoryOptimizationMain.cpp)
-target_link_libraries(trajectoryOptimization PRIVATE trajectoryOptimizationLib)
-target_link_libraries(trajectoryOptimization PUBLIC
-	Ipopt::Ipopt Rangev3::Rangev3)
+target_link_libraries(trajectoryOptimization
+	PUBLIC
+		Ipopt::Ipopt Rangev3::Rangev3
+	PRIVATE
+		trajectoryOptimizationLib
+)
 
 enable_testing()
 add_subdirectory(test)

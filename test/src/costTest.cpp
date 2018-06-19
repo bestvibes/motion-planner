@@ -1,8 +1,8 @@
 #include <array>
 #include <cassert>
 #include <gtest/gtest.h>
-#include "cost.hpp"
-#include "utilities.hpp"
+#include "trajectoryOptimization/cost.hpp"
+#include "trajectoryOptimization/utilities.hpp"
 
 using namespace trajectoryOptimization::cost;
 using namespace trajectoryOptimization::utilities;

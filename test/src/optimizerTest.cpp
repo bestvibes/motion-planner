@@ -3,7 +3,7 @@
 #include <functional>
 #include "coin/IpIpoptApplication.hpp"
 #include "coin/IpSolveStatistics.hpp"
-#include "optimizer.hpp"
+#include "trajectoryOptimization/optimizer.hpp"
 
 using namespace trajectoryOptimization::optimizer;
 using namespace testing;

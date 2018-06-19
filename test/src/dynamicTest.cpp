@@ -1,6 +1,6 @@
 #include <gtest/gtest.h> 
 #include <gmock/gmock.h>
-#include "dynamic.hpp"
+#include "trajectoryOptimization/dynamic.hpp"
 
 using namespace testing;
 using namespace trajectoryOptimization::dynamic;

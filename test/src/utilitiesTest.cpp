@@ -2,7 +2,7 @@
 #include <gmock/gmock.h>
 #include <vector>
 #include <range/v3/view.hpp>
-#include "utilities.hpp"
+#include "trajectoryOptimization/utilities.hpp"
 ;
 using namespace testing;
 using namespace trajectoryOptimization::utilities;

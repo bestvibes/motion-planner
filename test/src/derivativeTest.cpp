@@ -4,7 +4,7 @@
 #include <functional>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include "derivative.hpp"
+#include "trajectoryOptimization/derivative.hpp"
 
 using namespace trajectoryOptimization::derivative;
 
