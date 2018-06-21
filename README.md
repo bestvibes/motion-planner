@@ -1,6 +1,6 @@
 # Trajectory Optimization Library
 
-##Setup
+## Setup
 
 1) Create a new directory outside of this repo where you would like your dependencies installed, copy setup.sh to it, give it execution permissions, and run it in the empty directory.
 

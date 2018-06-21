@@ -238,7 +238,7 @@ find_package_handle_standard_args(Ipopt
     VERSION_VAR IPOPT_VERSION
 )
 
-if(IPOPT_FOUND AND NOT TARGET Ipopt::Ipopt)
+if(Ipopt_FOUND AND NOT TARGET Ipopt::Ipopt)
     add_library(Ipopt::Ipopt INTERFACE IMPORTED)
     set_target_properties(Ipopt::Ipopt PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${IPOPT_INCLUDE_DIRS}"

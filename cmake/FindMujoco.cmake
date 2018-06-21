@@ -11,13 +11,11 @@
 #
 #     Mujoco::Mujoco
 
-message(STATUS "MuJoCo path: " ${MUJOCO_ROOT_DIR})
-set(MUJOCO_FOUND ON)
 if (NOT EXISTS ${MUJOCO_ROOT_DIR})
-	message(WARNING  "MUJOCO_ROOT_DIR DOES NOT EXIST: " ${MUJOCO_ROOT_DIR})
-	set(MUJOCO_FOUND OFF)
-	return ()
+	message(WARNING  "MUJOCO_ROOT_DIR DOES NOT EXIST, SETTING TO /USR/LOCAL")
+	set(MUJOCO_ROOT_DIR "/usr/local")
 endif()
+message(STATUS "MuJoCo path: " ${MUJOCO_ROOT_DIR})
 
 set(MUJOCO_INCLUDE_DIR "${MUJOCO_ROOT_DIR}/include")
 set(MUJOCO_LIB_DIR "${MUJOCO_ROOT_DIR}/bin")
@@ -30,7 +28,7 @@ else()
 	message(STATUS "found MuJoCo lib: " ${MUJOCO_LIB})
 endif()
 
-find_library(LIB_GL NAMES GL gl OpenGL)
+find_library(LIB_GL NAMES GL gl OpenGL PATHS ${MUJOCO_LIB_DIR})
 if (NOT LIB_GL)
 	message(FATAL_ERROR  "Could not find GL library")
 else()
@@ -57,7 +55,13 @@ list(APPEND MUJOCO_LIBRARIES ${LIB_GL})
 list(APPEND MUJOCO_LIBRARIES ${LIB_GLEW})
 list(APPEND MUJOCO_LIBRARIES ${LIB_GLFW})
 
-if(MUJOCO_FOUND AND NOT TARGET Mujoco::Mujoco)
+mark_as_advanced(MUJOCO_INCLUDE_DIR MUJOCO_LIBRARIES)
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(Mujoco
+  REQUIRED_VARS MUJOCO_INCLUDE_DIR MUJOCO_LIBRARIES
+)
+
+if(Mujoco_FOUND AND NOT TARGET Mujoco::Mujoco)
     add_library(Mujoco::Mujoco INTERFACE IMPORTED)
     set_target_properties(Mujoco::Mujoco PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${MUJOCO_INCLUDE_DIR}"
