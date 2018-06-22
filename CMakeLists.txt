@@ -27,6 +27,11 @@ target_link_libraries(trajectoryOptimizationLib INTERFACE
 	Ipopt::Ipopt Rangev3::Rangev3
 )
 
+if (traj_opt_build_tests)
+	enable_testing()
+	add_subdirectory(test)
+endif()
+
 add_executable(trajectoryOptimization src/trajectoryOptimizationMain.cpp)
 target_link_libraries(trajectoryOptimization
 	PUBLIC
@@ -34,8 +39,3 @@ target_link_libraries(trajectoryOptimization
 	PRIVATE
 		trajectoryOptimizationLib
 )
-
-if (traj_opt_build_tests)
-	enable_testing()
-	add_subdirectory(test)
-endif()
