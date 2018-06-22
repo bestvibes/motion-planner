@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.8)
 set(CMAKE_CXX_STANDARD 17)
 
 option(traj_opt_build_tests "Build all of trajectoryOptimization's own tests." OFF)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR) # if building as top-level
+	option(traj_opt_build_samples "Build all of trajectoryOptimization's own samples." ON)
+else()
+	option(traj_opt_build_samples "Build all of trajectoryOptimization's own samples." OFF)
+endif()
 
 project(TrajectoryOptimization VERSION 0.9.1 LANGUAGES CXX)
 
@@ -32,10 +37,12 @@ if (traj_opt_build_tests)
 	add_subdirectory(test)
 endif()
 
-add_executable(trajectoryOptimization src/trajectoryOptimizationMain.cpp)
-target_link_libraries(trajectoryOptimization
-	PUBLIC
-		Ipopt::Ipopt Rangev3::Rangev3
-	PRIVATE
-		trajectoryOptimizationLib
-)
+if (traj_opt_build_samples)
+	add_executable(trajectoryOptimizationSample src/trajectoryOptimizationMain.cpp)
+	target_link_libraries(trajectoryOptimizationSample
+		PUBLIC
+			Ipopt::Ipopt Rangev3::Rangev3
+		PRIVATE
+			trajectoryOptimizationLib
+	)
+endif()
