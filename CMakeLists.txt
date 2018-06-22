@@ -10,7 +10,7 @@ list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_LIST_DIR}/cmake)
 include(cmake/LocalProperties.cmake)
 
 find_package(Ipopt REQUIRED MODULE)
-find_package(Mujoco QUIET MODULE)
+find_package(Mujoco MODULE)
 find_package(Rangev3 REQUIRED MODULE)
 
 add_library(trajectoryOptimizationLib INTERFACE)
