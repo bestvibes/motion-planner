@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.8)
 set(CMAKE_CXX_STANDARD 17)
 
+option(traj_opt_build_tests "Build all of trajectoryOptimization's own tests." OFF)
+
 project(TrajectoryOptimization VERSION 0.9.1 LANGUAGES CXX)
 
 #Make sure that custom modules like FindIpopt are found
@@ -33,5 +35,7 @@ target_link_libraries(trajectoryOptimization
 		trajectoryOptimizationLib
 )
 
-enable_testing()
-add_subdirectory(test)
+if (traj_opt_build_tests)
+	enable_testing()
+	add_subdirectory(test)
+endif()
