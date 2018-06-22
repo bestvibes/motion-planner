@@ -13,11 +13,12 @@ project(TrajectoryOptimization VERSION 0.9.1 LANGUAGES CXX)
 #Make sure that custom modules like FindIpopt are found
 list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
-# Load local dependency paths
-include(cmake/LocalProperties.cmake)
+# UNCOMMENT THESE TO ENABLE USING MUJOCO
+# # Load local dependency paths
+# include(cmake/LocalProperties.cmake)
+# find_package(Mujoco REQUIRED MODULE)
 
 find_package(Ipopt REQUIRED MODULE)
-find_package(Mujoco MODULE)
 find_package(Rangev3 REQUIRED MODULE)
 
 add_library(trajectoryOptimizationLib INTERFACE)
