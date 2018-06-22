@@ -18,7 +18,7 @@ add_library(trajectoryOptimizationLib INTERFACE)
 add_library(TrajectoryOptimization::TrajectoryOptimizationLib ALIAS trajectoryOptimizationLib)
 
 target_include_directories(trajectoryOptimizationLib INTERFACE
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
 	$<INSTALL_INTERFACE:include>
 )
 target_link_libraries(trajectoryOptimizationLib INTERFACE

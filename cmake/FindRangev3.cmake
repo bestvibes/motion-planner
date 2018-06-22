@@ -7,7 +7,7 @@
 #     Rangev3::Rangev3
 
 # Download and unpack rangev3 at configure time
-configure_file(${CMAKE_SOURCE_DIR}/cmake/Rangev3.cmake.in ${CMAKE_BINARY_DIR}/rangev3-download/CMakeLists.txt)
+configure_file(${CMAKE_CURRENT_LIST_DIR}/Rangev3.cmake.in ${CMAKE_BINARY_DIR}/rangev3-download/CMakeLists.txt)
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
   RESULT_VARIABLE result
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/rangev3-download )
