@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD 17)
 project(TrajectoryOptimization VERSION 0.9.1 LANGUAGES CXX)
 
 #Make sure that custom modules like FindIpopt are found
-list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_SOURCE_DIR}/cmake)
+list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
 # Load local dependency paths
 include(cmake/LocalProperties.cmake)
