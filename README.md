@@ -12,7 +12,7 @@ The example is located [here](src/trajectoryOptimizationMain.cpp). It optimized 
 
 ## Setup
 
-### Third-Party dependencies that will need to be needed
+### Third-Party dependencies that are needed
 
 1) [Ipopt](https://projects.coin-or.org/Ipopt)
 2) [CMake](https://cmake.org/)
