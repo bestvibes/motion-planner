@@ -1,5 +1,13 @@
 # Trajectory Optimization Library
 
+## Introduction
+
+This is a trajectory optimization library written in an easy-to-understand functional style. It treats the problem as a non-linear one and solves for the entire trajectory as one large optimization problem using [ipopt](https://github.com/coin-or/Ipopt) instead of solving it iteratively per time point.
+
+It is written in a purely function style. The Jacobian and gradients are calculated manually using numerical computing methods and are hand-tuned for performance. The only dependencies are [ipopt](https://github.com/coin-or/Ipopt) and [Rangev3](https://github.com/ericniebler/range-v3) (which is used very sparingly since it didn't turn out to be very performant, at least when this was written.)
+
+Refer to the [sample](src/trajectoryOptimizationMain.cpp) to see how it works.
+
 ## Setup
 
 ### Third-Party dependencies that will need to be needed
@@ -11,6 +19,8 @@
 A script `setup.sh` has been provided to install these dependencies on a Mac-based system. It will install Homebrew and use it to install these dependencies. To execute it, run `chmod +x setup.sh && ./setup.sh`.
 
 Linux support has not been added to the script yet.
+
+Note that Rangev3 is cloned and built automatically by CMake, so it does not need to be fetched manually.
 
 ### How to use TrajectoryOptimization
 
