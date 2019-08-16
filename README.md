@@ -6,7 +6,7 @@ This is a trajectory optimization library written in an easy-to-understand funct
 
 It is written in a purely function style. The Jacobian and gradients are calculated manually using numerical computing methods and are hand-tuned for performance. The Hessian is approximated by ipopt. The only dependencies are [ipopt](https://github.com/coin-or/Ipopt) and [Rangev3](https://github.com/ericniebler/range-v3) (which is used very sparingly since it didn't turn out to be very performant, at least when this was written.)
 
-The example is located [here](src/trajectoryOptimizationMain.cpp). It optimized a 3-D trajectory, starting from (0,0,0) and ending at (50,40,30), while hitting (-10, 20, 30) along the way, using simple block dynamics. Here are what the results look like:
+The example is located [here](src/trajectoryOptimizationMain.cpp). It optimizes a 3-D trajectory, starting from (0,0,0) and ending at (50,40,30), while hitting (-10, 20, 30) along the way, using simple block dynamics. Here are what the results look like:
 ![Output for the kinematics](graph.png "Output for the kinematics")
 ![Visualization of the trajectory](trajectory.png "Visualization of the trajectory")
 
